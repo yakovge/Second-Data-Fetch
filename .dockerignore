@@ -1,0 +1,89 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+.env
+
+# Testing
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+test-reports/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Node.js (if any)
+node_modules/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+docs/_build/
+
+# Local configuration
+.env.local
+config/local/
+
+# Large test files
+*.har
+screenshots/
+*.png
+*.jpg
+*.jpeg
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# Cloud credentials
+.aws/
+.gcp/
+credentials.json
+service-account.json
+
+# Cache directories
+.cache/
+.mypy_cache/
+.ruff_cache/
+
+# Development tools
+.pre-commit-config.yaml
+.flake8
+.black
+.isort.cfg

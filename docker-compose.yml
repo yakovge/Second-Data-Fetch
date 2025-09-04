@@ -1,0 +1,167 @@
+version: '3.8'
+
+services:
+  # Main application
+  datafetch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: datafetch-app
+    environment:
+      - DATAFETCH_ENV=production
+      - PYTHONPATH=/app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - S3_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      # Add your real API keys via environment file
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-test-api-key}
+    depends_on:
+      - redis
+      - localstack
+    volumes:
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+    networks:
+      - datafetch-network
+    command: ["test"]
+    restart: unless-stopped
+
+  # Development version with code mounting
+  datafetch-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: datafetch-dev
+    environment:
+      - DATAFETCH_ENV=development
+      - PYTHONPATH=/app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - S3_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-test-api-key}
+    depends_on:
+      - redis
+      - localstack
+    volumes:
+      - .:/app  # Mount entire project for development
+      - /app/venv  # Exclude venv from mounting
+    ports:
+      - "8888:8888"  # Jupyter Lab
+    networks:
+      - datafetch-network
+    command: ["test"]
+    profiles:
+      - dev
+
+  # Redis cache
+  redis:
+    image: redis:7-alpine
+    container_name: datafetch-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    networks:
+      - datafetch-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # LocalStack for S3 simulation
+  localstack:
+    image: localstack/localstack:latest
+    container_name: datafetch-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - PERSISTENCE=1
+    volumes:
+      - localstack-data:/tmp/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - datafetch-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Jupyter notebook for development and analysis
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: datafetch-jupyter
+    environment:
+      - DATAFETCH_ENV=development
+      - PYTHONPATH=/app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - S3_ENDPOINT_URL=http://localstack:4566
+    depends_on:
+      - redis
+      - localstack
+    volumes:
+      - .:/app
+      - ./notebooks:/app/notebooks
+    ports:
+      - "8888:8888"
+    networks:
+      - datafetch-network
+    command: ["jupyter"]
+    profiles:
+      - dev
+      - notebook
+
+  # Test runner
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: datafetch-tests
+    environment:
+      - DATAFETCH_ENV=test
+      - PYTHONPATH=/app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - S3_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    depends_on:
+      - redis
+      - localstack
+    volumes:
+      - .:/app
+      - ./test-reports:/app/test-reports
+    networks:
+      - datafetch-network
+    profiles:
+      - test
+
+networks:
+  datafetch-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local
+  localstack-data:
+    driver: local
