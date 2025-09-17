@@ -17,11 +17,11 @@ from src.collectors.http_client import HTTPClient
 
 def main():
     """Main demonstration function."""
-    print("🚀 DataFetch Abstraction System - Example Usage")
+    print("[DEMO] DataFetch Abstraction System - Example Usage")
     print("=" * 60)
     
     # Example 1: Parse user requirements
-    print("\n📝 Example 1: Parsing User Requirements")
+    print("\n[DEMO] Example 1: Parsing User Requirements")
     print("-" * 40)
     
     raw_text = """
@@ -41,7 +41,7 @@ def main():
     print(f"Confidence score: {parsed_spec.confidence_score:.2f}")
     
     # Example 2: Create and validate FetchSpec
-    print("\n🔧 Example 2: Creating FetchSpec")
+    print("\n[ICON] Example 2: Creating FetchSpec")
     print("-" * 40)
     
     spec = FetchSpec(
@@ -60,50 +60,32 @@ def main():
     print(f"  Timeout: {spec.timeout}s")
     print(f"  Retry count: {spec.retry_count}")
     
-    # Example 3: Fetch data (without external dependencies)
-    print("\n🌐 Example 3: Data Fetching Simulation")
+    # Example 3: Proper DataFetch Implementation (CLAUDE.md Pattern)
+    print("\n[ICON] Example 3: Proper DataFetch Implementation")
     print("-" * 40)
     
-    try:
-        # This would work with installed dependencies
-        client = HTTPClient(spec)
-        print(f"HTTPClient created successfully")
-        print(f"Session ID: {client.session_id}")
-        print(f"Configuration: {type(client.config).__name__}")
-        
-        # Simulate successful result
-        from datetime import datetime
-        from src.core.datafetch import FetchResult
-        
-        mock_result = FetchResult(
-            url=spec.urls[0],
-            data={
-                "slideshow": {
-                    "author": "Yours Truly",
-                    "date": "date of publication",
-                    "title": "Sample Slide Show"
-                }
-            },
-            timestamp=datetime.now(),
-            format=DataFormat.JSON,
-            method=FetchMethod.REQUESTS,
-            metadata={"status_code": 200, "mock": True},
-            cache_hit=False,
-            execution_time=0.5
-        )
-        
-        print(f"Mock fetch result:")
-        print(f"  URL: {mock_result.url}")
-        print(f"  Data keys: {list(mock_result.data.keys())}")
-        print(f"  Status: SUCCESS")
-        print(f"  Execution time: {mock_result.execution_time}s")
-        print(f"  Cache hit: {mock_result.cache_hit}")
-        
-    except ImportError as e:
-        print(f"Note: Full functionality requires dependencies: {e}")
+    print("CLAUDE.md Pattern: Create custom DataFetch subclass")
+    print("""
+class NewsArticleFetch(DataFetch):
+    def __init__(self, spec, cache_client=None):
+        super().__init__(spec, cache_client)
+        self.http_client = HTTPClient(spec, cache_client)
+    
+    def fetch(self) -> FetchResult:
+        return self.http_client.fetch()
+    
+    # Implement other required abstract methods...
+    """)
+    
+    print("For a real example, see: src/implementations/nyt_trump_fetch.py")
+    print("This demonstrates:")
+    print("  [ICON] Custom DataFetch subclass")
+    print("  [ICON] Uses HTTPClient as tool (doesn't modify it)")
+    print("  [ICON] Implements all abstract methods")
+    print("  [ICON] Custom business logic for specific use case")
     
     # Example 4: URL Management
-    print("\n🔗 Example 4: URL Management")
+    print("\n[ICON] Example 4: URL Management")
     print("-" * 40)
     
     url_manager = URLManager()
@@ -124,7 +106,7 @@ def main():
         print(f"  {url}: {status}{error_info}")
     
     # Example 5: Structure Definition
-    print("\n📊 Example 5: Data Structure Definition")
+    print("\n[ICON] Example 5: Data Structure Definition")
     print("-" * 40)
     
     struct_def = StructureDefinition()
@@ -159,7 +141,7 @@ def main():
     if errors:
         print(f"  Errors: {errors}")
     
-    print("\n✅ Example demonstration complete!")
+    print("\n[SUCCESS] Example demonstration complete!")
     print("To run with full functionality, install dependencies with:")
     print("  pip install -r requirements.txt")
 

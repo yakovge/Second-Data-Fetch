@@ -9,7 +9,19 @@
       "Bash(pip install:*)",
       "Bash(git init:*)",
       "Bash(git remote add:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(venv/Scripts/python.exe -c \"import sys; print(''Virtual env Python:'', sys.executable)\")",
+      "Bash(venv/Scripts/python.exe -c \"import pydantic; print(''Pydantic version:'', pydantic.__version__)\")",
+      "Bash(venvScriptspython.exe:*)",
+      "Bash(\"./venv/Scripts/python.exe\":*)",
+      "Bash(mkdir:*)",
+      "Bash(where python)",
+      "Bash(git restore:*)",
+      "Bash(sed:*)",
+      "Bash(find:*)",
+      "Bash(pip show:*)",
+      "Bash(playwright --version)"
     ],
     "deny": [],
     "ask": []
