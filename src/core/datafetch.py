@@ -39,7 +39,7 @@ class FetchResult(BaseModel):
     execution_time: float = Field(0.0, ge=0, description="Execution time in seconds")
     error: Optional[str] = Field(None, description="Error message if fetch failed")
 
-    model_config = ConfigDict(frozen=True)
+    # Note: FetchResult is not frozen to allow post-creation updates of metrics
 
 
 class FetchSpec(BaseModel):
@@ -102,7 +102,11 @@ class DataFetch(ABC):
         'apnews.com', 'www.apnews.com',
         'wsj.com', 'www.wsj.com',
         'washingtonpost.com', 'www.washingtonpost.com',
-        'theguardian.com', 'www.theguardian.com'
+        'theguardian.com', 'www.theguardian.com',
+        # Test domains
+        'httpbin.org', 'www.httpbin.org',
+        'example.org', 'www.example.org',
+        'jsonplaceholder.typicode.com'
     ]
     
     def __init__(self, 

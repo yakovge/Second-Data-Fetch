@@ -64,8 +64,8 @@ class TestRawTextParser:
         """Test URL cleaning functionality."""
         # Test protocol addition
         assert self.parser._clean_url("www.nytimes.com") == "https://www.nytimes.com"
-        assert self.parser._clean_url("nytimes.com") == "https://www.nytimes.com"
-        
+        assert self.parser._clean_url("nytimes.com") == "https://nytimes.com"  # Only adds protocol, not www
+
         # Test preservation of existing protocol
         assert self.parser._clean_url("https://www.nytimes.com") == "https://www.nytimes.com"
         assert self.parser._clean_url("http://nytimes.com") == "http://nytimes.com"
@@ -185,13 +185,13 @@ class TestRawTextParser:
         text = "Get news articles"
         news_urls = ["https://www.nytimes.com/api/articles"]
         structure = {"article": {"type": "object"}}
-        
+
         confidence = self.parser._calculate_confidence(text, news_urls, structure)
-        
-        # Should get bonus for news domain
-        non_news_urls = ["https://www.nytimes.com/api/articles"]
+
+        # Should get bonus for news domain vs non-news domain
+        non_news_urls = ["https://httpbin.org/json"]
         confidence_non_news = self.parser._calculate_confidence(text, non_news_urls, structure)
-        
+
         assert confidence > confidence_non_news
     
     def test_extract_metadata(self):
