@@ -33,18 +33,18 @@ class TestRawTextParser:
     
     def test_extract_urls_basic(self):
         """Test basic URL extraction."""
-        text = "Visit https://example.com for more info or check www.test.com"
+        text = "Visit https://www.nytimes.com for more info or check www.test.com"
         urls = self.parser._extract_urls(text)
         
         assert len(urls) >= 2
-        assert "https://example.com" in urls
+        assert "https://www.nytimes.com" in urls
         assert "https://www.test.com" in urls or "www.test.com" in urls
     
     def test_extract_urls_complex(self):
         """Test complex URL extraction."""
         text = """
         Check out these news sources:
-        - https://nytimes.com/articles/breaking-news
+        - https://www.nytimes.com/articles/breaking-news
         - reuters.com/world/politics
         - www.bbc.com/news/world-123456
         - Invalid: not-a-url
@@ -63,27 +63,27 @@ class TestRawTextParser:
     def test_clean_url(self):
         """Test URL cleaning functionality."""
         # Test protocol addition
-        assert self.parser._clean_url("www.example.com") == "https://www.example.com"
-        assert self.parser._clean_url("example.com") == "https://example.com"
+        assert self.parser._clean_url("www.nytimes.com") == "https://www.nytimes.com"
+        assert self.parser._clean_url("nytimes.com") == "https://www.nytimes.com"
         
         # Test preservation of existing protocol
-        assert self.parser._clean_url("https://example.com") == "https://example.com"
-        assert self.parser._clean_url("http://example.com") == "http://example.com"
+        assert self.parser._clean_url("https://www.nytimes.com") == "https://www.nytimes.com"
+        assert self.parser._clean_url("http://nytimes.com") == "http://nytimes.com"
     
     def test_is_valid_url(self):
         """Test URL validation."""
         valid_urls = [
-            "https://example.com",
-            "http://example.com",
-            "https://news.example.com/article/123",
-            "https://example.com/api?param=value"
+            "https://www.nytimes.com",
+            "http://nytimes.com",
+            "https://news.nytimes.com/article/123",
+            "https://www.nytimes.com/api?param=value"
         ]
         
         for url in valid_urls:
             assert self.parser._is_valid_url(url), f"Should be valid: {url}"
         
         invalid_urls = [
-            "ftp://example.com",
+            "ftp://nytimes.com",
             "javascript:alert('test')",
             "not-a-url",
             "",
@@ -138,19 +138,19 @@ class TestRawTextParser:
     
     def test_suggest_format_from_urls(self):
         """Test format suggestion from URLs."""
-        json_urls = ["https://api.example.com/news.json", "https://example.com/api/data"]
+        json_urls = ["https://api.nytimes.com/news.json", "https://www.nytimes.com/api/data"]
         assert self.parser._suggest_format("Get data", json_urls) == DataFormat.JSON
         
-        xml_urls = ["https://example.com/rss.xml", "https://example.com/feed.rss"]
+        xml_urls = ["https://www.nytimes.com/rss.xml", "https://www.nytimes.com/feed.rss"]
         assert self.parser._suggest_format("Get feed", xml_urls) == DataFormat.XML
         
-        csv_urls = ["https://example.com/data.csv"]
+        csv_urls = ["https://www.nytimes.com/data.csv"]
         assert self.parser._suggest_format("Get data", csv_urls) == DataFormat.CSV
     
     def test_suggest_method_requests(self):
         """Test method suggestion for requests."""
         text = "Get static HTML content"
-        urls = ["https://example.com/static-page"]
+        urls = ["https://www.nytimes.com/static-page"]
         
         assert self.parser._suggest_method(text, urls) == FetchMethod.REQUESTS
     
@@ -183,13 +183,13 @@ class TestRawTextParser:
     def test_calculate_confidence_news_bonus(self):
         """Test confidence bonus for news domains."""
         text = "Get news articles"
-        news_urls = ["https://nytimes.com/api/articles"]
+        news_urls = ["https://www.nytimes.com/api/articles"]
         structure = {"article": {"type": "object"}}
         
         confidence = self.parser._calculate_confidence(text, news_urls, structure)
         
         # Should get bonus for news domain
-        non_news_urls = ["https://example.com/api/articles"]
+        non_news_urls = ["https://www.nytimes.com/api/articles"]
         confidence_non_news = self.parser._calculate_confidence(text, non_news_urls, structure)
         
         assert confidence > confidence_non_news
@@ -197,7 +197,7 @@ class TestRawTextParser:
     def test_extract_metadata(self):
         """Test metadata extraction."""
         text = "Get latest breaking news from multiple sources today"
-        urls = ["https://example.com/news", "https://test.org/api"]
+        urls = ["https://www.nytimes.com/news", "https://test.org/api"]
         
         metadata = self.parser._extract_metadata(text, urls)
         
@@ -213,7 +213,7 @@ class TestRawTextParser:
         Fetch breaking news articles from Reuters and New York Times.
         I need the article title, content, author, and publication date.
         The data should be in JSON format for easy processing.
-        URLs: https://reuters.com/api/news, https://nytimes.com/api/articles
+        URLs: https://reuters.com/api/news, https://www.nytimes.com/api/articles
         """
         
         result = self.parser.parse(raw_text)
@@ -244,19 +244,19 @@ class TestURLManager:
     
     def test_discover_urls(self):
         """Test URL discovery from text."""
-        text = "Check https://example.com and www.test.org for data"
+        text = "Check https://www.nytimes.com and www.test.org for data"
         urls = self.manager.discover_urls(text)
         
         assert len(urls) >= 2
-        assert any("example.com" in url for url in urls)
+        assert any("nytimes.com" in url for url in urls)
         assert any("test.org" in url for url in urls)
     
     def test_validate_urls(self):
         """Test URL validation."""
         urls = [
-            "https://example.com",  # Valid
+            "https://www.nytimes.com",  # Valid
             "http://localhost:8080",  # Invalid (localhost)
-            "ftp://example.com",  # Invalid (wrong protocol)
+            "ftp://nytimes.com",  # Invalid (wrong protocol)
             "https://valid-site.com/path"  # Valid
         ]
         
@@ -271,9 +271,9 @@ class TestURLManager:
     def test_normalize_urls(self):
         """Test URL normalization."""
         urls = [
-            "https://example.com/path?param=value#fragment",
+            "https://www.nytimes.com/path?param=value#fragment",
             "http://test.com/path/",
-            "https://example.com/path/../other"
+            "https://www.nytimes.com/path/../other"
         ]
         
         normalized = self.manager.normalize_urls(urls)
@@ -403,7 +403,7 @@ class TestParsedSpec:
         """Test ParsedSpec creation."""
         spec = ParsedSpec(
             raw_text="Test input",
-            extracted_urls=["https://example.com"],
+            extracted_urls=["https://www.nytimes.com"],
             inferred_structure={"type": "object"},
             suggested_format=DataFormat.JSON,
             suggested_method=FetchMethod.REQUESTS,
@@ -412,7 +412,7 @@ class TestParsedSpec:
         )
         
         assert spec.raw_text == "Test input"
-        assert spec.extracted_urls == ["https://example.com"]
+        assert spec.extracted_urls == ["https://www.nytimes.com"]
         assert spec.inferred_structure == {"type": "object"}
         assert spec.suggested_format == DataFormat.JSON
         assert spec.suggested_method == FetchMethod.REQUESTS

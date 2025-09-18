@@ -15,8 +15,8 @@ class TestHTTPClient:
     def setup_method(self):
         """Set up test fixtures."""
         self.spec = FetchSpec(
-            raw_text="Fetch news articles from example.com",
-            urls=["https://example.com/api/news"],
+            raw_text="Fetch news articles from nytimes.com",
+            urls=["https://www.nytimes.com/api/news"],
             expected_format=DataFormat.JSON,
             method=FetchMethod.REQUESTS,
             timeout=30,
@@ -62,7 +62,7 @@ class TestHTTPClient:
         """Test configuration with custom headers."""
         spec_with_headers = FetchSpec(
             raw_text="Fetch data",
-            urls=["https://example.com/api"],
+            urls=["https://www.nytimes.com/api"],
             custom_headers={"Authorization": "Bearer token123"},
             expected_format=DataFormat.JSON,
             method=FetchMethod.REQUESTS
@@ -77,7 +77,7 @@ class TestHTTPClient:
         """Test successful JSON fetch."""
         responses.add(
             responses.GET,
-            "https://example.com/api/news",
+            "https://www.nytimes.com/api/news",
             json={"articles": [{"title": "Test Article", "content": "Test content"}]},
             status=200
         )
@@ -86,7 +86,7 @@ class TestHTTPClient:
         result = client.fetch()
         
         assert isinstance(result, FetchResult)
-        assert result.url == "https://example.com/api/news"
+        assert result.url == "https://www.nytimes.com/api/news"
         assert result.data == {"articles": [{"title": "Test Article", "content": "Test content"}]}
         assert result.method == FetchMethod.REQUESTS
         assert result.error is None
@@ -112,14 +112,14 @@ class TestHTTPClient:
         
         html_spec = FetchSpec(
             raw_text="Get HTML article",
-            urls=["https://example.com/article"],
+            urls=["https://www.nytimes.com/article"],
             expected_format=DataFormat.HTML,
             method=FetchMethod.REQUESTS
         )
         
         responses.add(
             responses.GET,
-            "https://example.com/article",
+            "https://www.nytimes.com/article",
             body=html_content,
             status=200,
             content_type="text/html"
@@ -140,13 +140,13 @@ class TestHTTPClient:
         # First request fails, second succeeds
         responses.add(
             responses.GET,
-            "https://example.com/api/news",
+            "https://www.nytimes.com/api/news",
             json={"error": "server error"},
             status=500
         )
         responses.add(
             responses.GET,
-            "https://example.com/api/news",
+            "https://www.nytimes.com/api/news",
             json={"articles": []},
             status=200
         )
@@ -166,7 +166,7 @@ class TestHTTPClient:
         for _ in range(self.spec.retry_count + 1):
             responses.add(
                 responses.GET,
-                "https://example.com/api/news",
+                "https://www.nytimes.com/api/news",
                 json={"error": "server error"},
                 status=500
             )
@@ -182,7 +182,7 @@ class TestHTTPClient:
     def test_fetch_with_cache_hit(self):
         """Test fetch with cache hit."""
         cached_result = FetchResult(
-            url="https://example.com/api/news",
+            url="https://www.nytimes.com/api/news",
             data={"cached": "data"},
             timestamp=datetime.now(),
             format=DataFormat.JSON,
@@ -206,7 +206,7 @@ class TestHTTPClient:
         """Test fetch with cache storage."""
         responses.add(
             responses.GET,
-            "https://example.com/api/news",
+            "https://www.nytimes.com/api/news",
             json={"articles": []},
             status=200
         )
@@ -234,7 +234,7 @@ class TestHTTPClient:
         """Test XML response processing."""
         xml_spec = FetchSpec(
             raw_text="Get XML data",
-            urls=["https://example.com/api.xml"],
+            urls=["https://www.nytimes.com/api.xml"],
             expected_format=DataFormat.XML,
             method=FetchMethod.REQUESTS
         )
@@ -333,7 +333,7 @@ class TestHTTPClient:
         """Test cache key generation."""
         client = HTTPClient(self.spec)
         
-        url = "https://example.com/test"
+        url = "https://www.nytimes.com/test"
         key1 = client.get_cache_key(url)
         key2 = client.get_cache_key(url)
         
@@ -346,7 +346,7 @@ class TestHTTPClient:
         """Test metrics collection during fetch."""
         responses.add(
             responses.GET,
-            "https://example.com/api/news",
+            "https://www.nytimes.com/api/news",
             json={"test": "data"},
             status=200
         )
@@ -373,7 +373,7 @@ class TestHTTPClient:
                 return json.dumps({"test": "data"}).encode()
             mock_response.read = mock_read
             mock_response.raise_for_status.return_value = None
-            mock_response.url = "https://example.com/api/news"
+            mock_response.url = "https://www.nytimes.com/api/news"
             
             # Mock session context manager
             mock_session_instance = MagicMock()
@@ -490,9 +490,9 @@ class TestHTTPClientIntegration:
         multi_url_spec = FetchSpec(
             raw_text="Fetch from multiple sources",
             urls=[
-                "https://example.com/api/1",
-                "https://example.com/api/2",
-                "https://example.com/api/3"
+                "https://www.nytimes.com/api/1",
+                "https://www.nytimes.com/api/2",
+                "https://www.nytimes.com/api/3"
             ],
             expected_format=DataFormat.JSON,
             method=FetchMethod.REQUESTS

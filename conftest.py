@@ -34,8 +34,8 @@ def test_config():
 def sample_fetch_spec():
     """Sample FetchSpec for testing."""
     return FetchSpec(
-        raw_text="Fetch news articles from example.com",
-        urls=["https://example.com/api/news"],
+        raw_text="Fetch news articles from nytimes.com",
+        urls=["https://www.nytimes.com/api/news"],
         expected_format=DataFormat.JSON,
         method=FetchMethod.REQUESTS,
         timeout=30,
@@ -47,7 +47,7 @@ def sample_fetch_spec():
 def sample_fetch_result():
     """Sample FetchResult for testing."""
     return FetchResult(
-        url="https://example.com/api/news",
+        url="https://www.nytimes.com/api/news",
         data={
             "articles": [
                 {
@@ -103,7 +103,7 @@ def mock_gemini_client():
         }
     }
     mock_client.generate_urls_from_text.return_value = [
-        "https://example.com/api/news"
+        "https://www.nytimes.com/api/news"
     ]
     mock_client.generate_datafetch_implementation.return_value = """
 class GeneratedDataFetch(DataFetch):
