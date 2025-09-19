@@ -10,6 +10,12 @@ import time
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Load .env file if available
+except ImportError:
+    pass  # dotenv not available, continue without it
+
 from ..core.datafetch import FetchSpec, DataFormat, FetchMethod, SecurityError
 
 
@@ -49,7 +55,7 @@ class GeminiClient:
         "max_output_tokens": 8192,
     }
     
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-1.5-pro"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-1.5-flash"):
         """
         Initialize Gemini client.
         

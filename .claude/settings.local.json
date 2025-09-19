@@ -21,7 +21,8 @@
       "Bash(sed:*)",
       "Bash(find:*)",
       "Bash(pip show:*)",
-      "Bash(playwright --version)"
+      "Bash(playwright --version)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
