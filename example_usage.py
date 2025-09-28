@@ -77,12 +77,12 @@ class NewsArticleFetch(DataFetch):
     # Implement other required abstract methods...
     """)
     
-    print("For a real example, see: src/implementations/nyt_trump_fetch.py")
+    print("For a working example, see: fetch_articles.py")
     print("This demonstrates:")
-    print("  [ICON] Custom DataFetch subclass")
-    print("  [ICON] Uses HTTPClient as tool (doesn't modify it)")
-    print("  [ICON] Implements all abstract methods")
-    print("  [ICON] Custom business logic for specific use case")
+    print("  [ICON] Uses HTTPClient and BrowserClient as tools")
+    print("  [ICON] Intelligent article ranking and relevance scoring")
+    print("  [ICON] AI-enhanced URL discovery and structure inference")
+    print("  [ICON] Real-world news article fetching with ranking")
     
     # Example 4: URL Management
     print("\n[ICON] Example 4: URL Management")
