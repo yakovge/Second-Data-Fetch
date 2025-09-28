@@ -288,11 +288,21 @@ Return only the JSON schema, no additional commentary:"""
 User Requirements: {raw_text}{domain_section}
 
 Instructions:
-1. Generate 3-5 relevant URLs that would contain the requested data
-2. Focus on reputable news websites and data sources
-3. Prefer APIs or structured data endpoints when available
-4. Use HTTPS URLs only
-5. Return only valid, accessible URLs
+1. Generate exactly 2 relevant URLs that would contain the requested data
+2. For NYT: Look for specific topic sections first (e.g. war, conflict, defense), then broader sections
+3. Priority order: specific topic sections > world/politics sections > general sections
+4. Use section URLs like /section/[topic] (not /topic/ URLs which don't work)
+5. Focus on main section pages and RSS feeds rather than specific article URLs
+6. Use HTTPS URLs only
+7. Return only valid, accessible URLs that actually exist
+
+Examples of good NYT URLs by specificity:
+- https://www.nytimes.com/section/world/middleeast (war-related conflicts)
+- https://www.nytimes.com/section/world/europe (Ukraine war coverage)
+- https://www.nytimes.com/section/us/politics (political conflicts)
+- https://www.nytimes.com/section/world (broader coverage)
+
+Note: Use actual working sections like middleeast, europe, not fictional war-specific URLs
 
 Return URLs one per line, no additional text:"""
 

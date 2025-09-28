@@ -1,36 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir:*)",
-      "Read(/C:\\Users\\user\\Projects\\Second-Data-Fetch/**)",
-      "Read(/C:\\Users\\user\\Projects\\Second-Data-Fetch\\.claude/**)",
-      "Bash(python:*)",
-      "Bash(venv/Scripts/activate:*)",
-      "Bash(pip install:*)",
-      "Bash(git init:*)",
-      "Bash(git remote add:*)",
-      "Bash(git add:*)",
-      "Bash(git push:*)",
-      "Bash(venv/Scripts/python.exe -c \"import sys; print(''Virtual env Python:'', sys.executable)\")",
-      "Bash(venv/Scripts/python.exe -c \"import pydantic; print(''Pydantic version:'', pydantic.__version__)\")",
-      "Bash(venvScriptspython.exe:*)",
-      "Bash(\"./venv/Scripts/python.exe\":*)",
-      "Bash(mkdir:*)",
-      "Bash(where python)",
-      "Bash(git restore:*)",
-      "Bash(sed:*)",
-      "Bash(find:*)",
-      "Bash(pip show:*)",
-      "Bash(playwright --version)",
-      "Bash(git commit:*)",
-      "Bash(rm:*)",
-      "Bash(./venv/Scripts/python.exe test_new_api_key.py:*)",
-      "Bash(./venv/Scripts/python.exe test_gemini_models.py:*)",
-      "Bash(./venv/Scripts/python.exe test_claude_integration.py)",
-      "Bash(cat:*)",
-      "Bash(./venv/Scripts/python.exe test_ai_workflow.py:*)",
-      "Bash(./venv/Scripts/python.exe demo_ai_implementation.py)",
-      "Bash(grep:*)"
+      "Bash(venv/Scripts/python.exe:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

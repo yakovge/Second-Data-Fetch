@@ -255,19 +255,19 @@ class RawTextParser:
                ['javascript', 'dynamic', 'spa', 'react', 'vue', 'angular']):
             return FetchMethod.PLAYWRIGHT
         
-        # Check URL domains for known SPA sites
+        # Check URL domains for sites that need JavaScript rendering
         for url in urls:
             try:
                 domain = urlparse(url).netloc.lower()
-                # Some news sites that heavily use JavaScript
-                if any(spa_domain in domain for spa_domain in 
-                       ['twitter.com', 'facebook.com', 'instagram.com']):
+                # News sites and social media that heavily use JavaScript
+                if any(js_domain in domain for js_domain in
+                       ['nytimes.com', 'wsj.com', 'twitter.com', 'facebook.com', 'instagram.com']):
                     return FetchMethod.PLAYWRIGHT
             except Exception:
                 continue
-        
-        # Default to requests for news sites
-        return FetchMethod.REQUESTS
+
+        # Default to Playwright for better content extraction
+        return FetchMethod.PLAYWRIGHT
     
     def _calculate_confidence(self, text: str, urls: List[str], 
                             structure: Optional[Dict[str, Any]]) -> float:

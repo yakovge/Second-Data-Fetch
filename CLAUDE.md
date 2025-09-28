@@ -29,7 +29,7 @@ This is a Data Fetch Abstraction system that creates specification-driven data f
 - Both support multiple data formats (JSON, XML, HTML, CSV) with intelligent parsing
 
 ### 4. Infrastructure Components
-- **AI Integration** (`src/ai/gemini_client.py`): Gemini 1.5 API with security safeguards
+- **AI Integration** (`src/ai/claude_client.py`): Claude 3 Haiku API with security safeguards for URL discovery and structure inference
 - **Caching** (`src/cache/redis_client.py`): High-performance Redis client with compression
 - **Storage** (`src/storage/s3_manager.py`): AWS S3 with lifecycle management and compression
 
@@ -189,10 +189,11 @@ tests/
 
 Required for full functionality:
 ```bash
-# AI Integration
-GEMINI_API_KEY=your_gemini_api_key
+# AI Integration - Currently using Claude 3 Haiku
+ANTHROPIC_API_KEY=your_anthropic_api_key
+# Alternative: CLAUDE_API_KEY=your_anthropic_api_key
 
-# AWS Storage  
+# AWS Storage
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
 AWS_DEFAULT_REGION=us-east-1
@@ -222,7 +223,7 @@ make docker-test
 ### Manual Setup
 ```bash
 pip install -r requirements.txt
-export GEMINI_API_KEY=your_key
+export ANTHROPIC_API_KEY=your_key  # Claude 3 Haiku API key
 python example_usage.py
 ```
 
@@ -233,4 +234,5 @@ python example_usage.py
 3. **News website focus** - optimize for NYT, Reuters, BBC, CNN patterns  
 4. **Security first** - always validate inputs and URLs
 5. **Sub-1s latency target** - use caching effectively
-6. **AI safety** - prevent prompt injection in AI interactions
+6. **AI safety** - prevent prompt injection in Claude Haiku interactions (fast and cost-effective for URL/structure discovery)
+- always use git conmmit and git push after modifying the code. this is crutial for backups. in addition, once you've developed a new feature, you must run 'npm run build' command, check if there are any errors, only if there are errors - fix it all and and then commit and push the code to the branch you are working on only.

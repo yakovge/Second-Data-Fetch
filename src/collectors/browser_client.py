@@ -77,8 +77,8 @@ class BrowserClient(DataFetch):
             viewport_width=1920,
             viewport_height=1080,
             user_agent=self.DEFAULT_USER_AGENTS['chrome'],
-            timeout=self._spec.timeout * 1000,  # Playwright uses milliseconds
-            wait_for_load_state='networkidle',
+            timeout=max(45000, self._spec.timeout * 1000),  # Increase timeout for news sites
+            wait_for_load_state='domcontentloaded',  # Less strict than networkidle
             wait_for_selector=None,
             javascript_enabled=True,
             images_enabled=not is_news_site,  # Disable images for news sites to speed up
@@ -271,11 +271,20 @@ class BrowserClient(DataFetch):
                 await browser.close()
     
     def _launch_sync_browser(self, playwright) -> SyncBrowser:
-        """Launch synchronous browser."""
+        """Launch synchronous browser with stealth settings."""
         if self.browser_type == 'chromium':
+            # Stealth args to avoid detection
+            stealth_args = [
+                '--no-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-blink-features=AutomationControlled',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor',
+                '--user-agent=' + self.config.user_agent
+            ]
             return playwright.chromium.launch(
                 headless=self.config.headless,
-                args=['--no-sandbox', '--disable-dev-shm-usage'] if self.config.headless else []
+                args=stealth_args
             )
         elif self.browser_type == 'firefox':
             return playwright.firefox.launch(headless=self.config.headless)
@@ -285,11 +294,20 @@ class BrowserClient(DataFetch):
             raise ValueError(f"Unsupported browser type: {self.browser_type}")
     
     async def _launch_async_browser(self, playwright) -> Browser:
-        """Launch asynchronous browser."""
+        """Launch asynchronous browser with stealth settings."""
         if self.browser_type == 'chromium':
+            # Stealth args to avoid detection
+            stealth_args = [
+                '--no-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-blink-features=AutomationControlled',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor',
+                '--user-agent=' + self.config.user_agent
+            ]
             return await playwright.chromium.launch(
                 headless=self.config.headless,
-                args=['--no-sandbox', '--disable-dev-shm-usage'] if self.config.headless else []
+                args=stealth_args
             )
         elif self.browser_type == 'firefox':
             return await playwright.firefox.launch(headless=self.config.headless)
@@ -479,11 +497,15 @@ class BrowserClient(DataFetch):
             }
         """)
         
-        # If we have structured data, return it
+        # Check if this is a section/listing page (like NYT sections) - prioritize this over structured data
+        if 'section/' in page.url or 'category/' in page.url or 'nytimes.com/section' in page.url:
+            return self._extract_article_links_sync(page)
+
+        # If we have structured data for individual articles, return it
         if structured_data and (structured_data.get('jsonLd') or structured_data.get('openGraph')):
             return structured_data
-        
-        # Otherwise extract article content
+
+        # Otherwise extract single article content
         return self._extract_article_content_sync(page)
     
     async def _extract_json_async(self, page: Page) -> Any:
@@ -529,11 +551,15 @@ class BrowserClient(DataFetch):
             }
         """)
         
-        # If we have structured data, return it
+        # Check if this is a section/listing page (like NYT sections) - prioritize this over structured data
+        if 'section/' in page.url or 'category/' in page.url or 'nytimes.com/section' in page.url:
+            return await self._extract_article_links_async(page)
+
+        # If we have structured data for individual articles, return it
         if structured_data and (structured_data.get('jsonLd') or structured_data.get('openGraph')):
             return structured_data
-        
-        # Otherwise extract article content
+
+        # Otherwise extract single article content
         return await self._extract_article_content_async(page)
     
     def _extract_html_sync(self, page: SyncPage) -> Dict[str, Any]:
@@ -544,6 +570,120 @@ class BrowserClient(DataFetch):
         """Extract HTML data from page (async)."""
         return await self._extract_article_content_async(page)
     
+    def _extract_article_links_sync(self, page: SyncPage) -> List[Dict[str, Any]]:
+        """Extract article links from section/listing pages (sync)."""
+        return page.evaluate("""
+            () => {
+                const articles = [];
+
+                // NYT-specific selectors for article links
+                const articleSelectors = [
+                    'a[href*="/2024/"]',  // NYT article URLs contain year
+                    'a[href*="/2025/"]',
+                    'article a',
+                    '.story-wrapper a',
+                    '.css-1l4spti a',  // NYT CSS classes (may change)
+                    'h3 a',
+                    'h2 a',
+                    'h1 a',
+                    '[data-testid="headline"] a'
+                ];
+
+                const foundLinks = new Set();
+
+                for (let selector of articleSelectors) {
+                    const links = document.querySelectorAll(selector);
+
+                    for (let link of links) {
+                        const href = link.href;
+                        const text = link.textContent?.trim();
+
+                        // Filter for actual article URLs
+                        if (href && text && (href.includes('/2024/') || href.includes('/2025/'))) {
+                            if (!foundLinks.has(href) && text.length > 10) {
+                                foundLinks.add(href);
+
+                                // Get additional info from parent elements
+                                let summary = '';
+                                const parent = link.closest('article, .story-wrapper, .css-1l4spti');
+                                if (parent) {
+                                    const summaryEl = parent.querySelector('p, .summary, .css-1pga48a');
+                                    if (summaryEl) {
+                                        summary = summaryEl.textContent?.trim() || '';
+                                    }
+                                }
+
+                                articles.push({
+                                    title: text,
+                                    url: href,
+                                    summary: summary.substring(0, 200)
+                                });
+                            }
+                        }
+                    }
+                }
+
+                return articles.slice(0, 10);  // Return top 10 articles
+            }
+        """)
+
+    async def _extract_article_links_async(self, page: Page) -> List[Dict[str, Any]]:
+        """Extract article links from section/listing pages (async)."""
+        return await page.evaluate("""
+            () => {
+                const articles = [];
+
+                // NYT-specific selectors for article links
+                const articleSelectors = [
+                    'a[href*="/2024/"]',  // NYT article URLs contain year
+                    'a[href*="/2025/"]',
+                    'article a',
+                    '.story-wrapper a',
+                    '.css-1l4spti a',  // NYT CSS classes (may change)
+                    'h3 a',
+                    'h2 a',
+                    'h1 a',
+                    '[data-testid="headline"] a'
+                ];
+
+                const foundLinks = new Set();
+
+                for (let selector of articleSelectors) {
+                    const links = document.querySelectorAll(selector);
+
+                    for (let link of links) {
+                        const href = link.href;
+                        const text = link.textContent?.trim();
+
+                        // Filter for actual article URLs
+                        if (href && text && (href.includes('/2024/') || href.includes('/2025/'))) {
+                            if (!foundLinks.has(href) && text.length > 10) {
+                                foundLinks.add(href);
+
+                                // Get additional info from parent elements
+                                let summary = '';
+                                const parent = link.closest('article, .story-wrapper, .css-1l4spti');
+                                if (parent) {
+                                    const summaryEl = parent.querySelector('p, .summary, .css-1pga48a');
+                                    if (summaryEl) {
+                                        summary = summaryEl.textContent?.trim() || '';
+                                    }
+                                }
+
+                                articles.push({
+                                    title: text,
+                                    url: href,
+                                    summary: summary.substring(0, 200)
+                                });
+                            }
+                        }
+                    }
+                }
+
+                return articles.slice(0, 10);  // Return top 10 articles
+            }
+        """)
+
     def _extract_article_content_sync(self, page: SyncPage) -> Dict[str, Any]:
         """Extract article content using common patterns (sync)."""
         return page.evaluate("""
