@@ -3,7 +3,10 @@
     "allow": [
       "Bash(venv/Scripts/python.exe:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(venvScriptspython.exe fetch_articles.py:*)",
+      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py)"
     ],
     "deny": [],
     "ask": []
