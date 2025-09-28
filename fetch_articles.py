@@ -18,6 +18,71 @@ from src.spec.parser import RawTextParser
 from src.collectors.http_client import HTTPClient
 from src.collectors.browser_client import BrowserClient
 from src.core.datafetch import FetchSpec, FetchMethod
+import re
+
+
+def score_article_relevance(article, query_keywords):
+    """
+    Score article relevance based on title, summary, and keyword matches.
+
+    Args:
+        article (dict): Article with title, summary, etc.
+        query_keywords (list): Keywords extracted from user query
+
+    Returns:
+        float: Relevance score (higher = more relevant)
+    """
+    score = 0.0
+
+    # Get article text fields
+    title = article.get('title', '').lower()
+    summary = article.get('summary', '').lower()
+    url = article.get('url', '').lower()
+
+    # Extract keywords from query (simple approach)
+    if not query_keywords:
+        return 1.0  # Default score if no keywords
+
+    for keyword in query_keywords:
+        keyword = keyword.lower()
+
+        # Title matches are most important (3x weight)
+        if keyword in title:
+            score += 3.0
+
+        # Summary matches are moderately important (2x weight)
+        if keyword in summary:
+            score += 2.0
+
+        # URL matches are less important (1x weight)
+        if keyword in url:
+            score += 1.0
+
+    # Boost recent articles (if URL contains 2024/2025)
+    if '2024' in url or '2025' in url:
+        score += 0.5
+
+    # Boost articles with longer titles (more descriptive)
+    if len(title) > 50:
+        score += 0.3
+
+    # Boost articles with summaries
+    if summary and len(summary) > 20:
+        score += 0.2
+
+    return score
+
+
+def extract_keywords_from_query(query):
+    """Extract meaningful keywords from user query."""
+    # Remove common stop words and extract meaningful terms
+    stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'about', 'articles', 'news'}
+
+    # Simple tokenization and filtering
+    words = re.findall(r'\b\w+\b', query.lower())
+    keywords = [word for word in words if len(word) > 2 and word not in stop_words]
+
+    return keywords
 
 
 def fetch_articles(query):
@@ -129,21 +194,39 @@ def fetch_articles(query):
 
     # Step 3: Display results
     if result.data:
-        print("ARTICLES: Found articles:")
+        print("ARTICLES: Found articles (ranked by relevance):")
         print("=" * 50)
 
         # Handle different data types
         if isinstance(result.data, (list, tuple)):
-            articles_to_show = result.data[:5]  # Show first 5
-            for i, article in enumerate(articles_to_show, 1):
+            # Extract keywords from query for ranking
+            query_keywords = extract_keywords_from_query(query)
+            print(f"Ranking keywords: {', '.join(query_keywords)}")
+            print()
+
+            # Score and sort articles by relevance
+            scored_articles = []
+            for article in result.data:
                 if isinstance(article, dict):
-                    print(f"{i}. {article.get('title', 'No title')}")
+                    score = score_article_relevance(article, query_keywords)
+                    scored_articles.append((score, article))
+                else:
+                    scored_articles.append((0.0, article))
+
+            # Sort by score (highest first)
+            scored_articles.sort(key=lambda x: x[0], reverse=True)
+
+            # Display up to 10 best articles
+            articles_to_show = scored_articles[:10]
+            for i, (score, article) in enumerate(articles_to_show, 1):
+                if isinstance(article, dict):
+                    print(f"{i}. {article.get('title', 'No title')} [Score: {score:.1f}]")
                     if article.get('summary'):
                         print(f"   Summary: {article['summary'][:100]}...")
                     if article.get('url'):
                         print(f"   URL: {article['url']}")
                 else:
-                    print(f"{i}. {str(article)[:100]}...")
+                    print(f"{i}. {str(article)[:100]}... [Score: {score:.1f}]")
                 print()
         elif isinstance(result.data, dict):
             # Single article or structured data
