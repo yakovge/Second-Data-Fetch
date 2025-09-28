@@ -260,11 +260,21 @@ def fetch_articles(query):
                 else:
                     scored_articles.append((0.0, article))
 
-            # Sort by score (highest first)
+            # Sort by score (highest first) and select top 10 most relevant
             scored_articles.sort(key=lambda x: x[0], reverse=True)
 
-            # Display up to 10 best articles
-            articles_to_show = scored_articles[:10]
+            # Filter for only relevant articles (score > 0) and take top 10
+            relevant_articles = [(score, article) for score, article in scored_articles if score > 0]
+
+            # If we have more than 10 relevant articles, take the best 10
+            # If we have fewer than 10 relevant articles, supplement with highest-scoring others
+            if len(relevant_articles) >= 10:
+                articles_to_show = relevant_articles[:10]
+                print(f"Showing top 10 most relevant articles (from {len(relevant_articles)} relevant, {len(scored_articles)} total)")
+            else:
+                articles_to_show = scored_articles[:10]  # Take top 10 regardless of relevance
+                print(f"Showing top 10 articles ({len(relevant_articles)} highly relevant, {len(scored_articles)} total)")
+            print()
             for i, (score, article) in enumerate(articles_to_show, 1):
                 if isinstance(article, dict):
                     print(f"{i}. {article.get('title', 'No title')} [Score: {score:.1f}]")
