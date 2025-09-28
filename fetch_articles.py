@@ -176,15 +176,62 @@ def fetch_articles(query):
         retry_count=3
     )
 
-    # Choose client based on suggested method
-    if spec.suggested_method == FetchMethod.PLAYWRIGHT:
-        print("  Using Playwright for dynamic content extraction...")
-        client = BrowserClient(fetch_spec)
-    else:
-        print("  Using HTTP client for static content...")
-        client = HTTPClient(fetch_spec)
+    # Fetch from all URLs to get diverse content
+    print(f"  Fetching from {len(spec.extracted_urls)} URLs for maximum diversity...")
+    all_articles = []
+    total_fetch_time = 0
 
-    result = client.fetch()
+    for i, url in enumerate(spec.extracted_urls, 1):
+        print(f"  Processing URL {i}/{len(spec.extracted_urls)}: {url}")
+
+        # Create individual fetch spec for each URL
+        individual_spec = FetchSpec(
+            raw_text=spec.raw_text,
+            urls=[url],  # Single URL
+            expected_format=spec.suggested_format,
+            method=spec.suggested_method,
+            timeout=30,
+            retry_count=3
+        )
+
+        # Choose client based on suggested method
+        if spec.suggested_method == FetchMethod.PLAYWRIGHT:
+            client = BrowserClient(individual_spec)
+        else:
+            client = HTTPClient(individual_spec)
+
+        try:
+            url_result = client.fetch()
+            total_fetch_time += url_result.execution_time
+
+            if not url_result.error and url_result.data:
+                if isinstance(url_result.data, (list, tuple)):
+                    all_articles.extend(url_result.data)
+                else:
+                    all_articles.append(url_result.data)
+
+        except Exception as e:
+            print(f"    Warning: Failed to fetch from {url}: {e}")
+            continue
+
+    # Remove duplicates by URL while preserving order
+    seen_urls = set()
+    unique_articles = []
+    for article in all_articles:
+        if isinstance(article, dict):
+            article_url = article.get('url', '')
+            if article_url and article_url not in seen_urls:
+                seen_urls.add(article_url)
+                unique_articles.append(article)
+        else:
+            unique_articles.append(article)
+
+    # Create combined result
+    result = type('Result', (), {
+        'data': unique_articles,
+        'execution_time': total_fetch_time,
+        'error': None
+    })()
 
     print("SUCCESS: Fetch completed:")
     print(f"  Status: {'Success' if not result.error else 'Failed'}")
