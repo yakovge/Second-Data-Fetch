@@ -24,6 +24,7 @@ import json
 from ..core.datafetch import DataFetch, FetchSpec, FetchResult, DataFormat, FetchMethod
 from ..spec.parser import RawTextParser, URLManager, StructureDefinition
 from ..ai.gemini_client import GeminiClient
+from ..ai.claude_client import ClaudeClient
 from ..collectors.http_client import HTTPClient
 from ..collectors.browser_client import BrowserClient
 
@@ -37,14 +38,14 @@ class AIOrchestrator:
     """
 
     def __init__(self,
-                 ai_client: Optional[GeminiClient] = None,
+                 ai_client: Optional[Any] = None,
                  cache_client: Optional[Any] = None,
                  storage_client: Optional[Any] = None):
         """
         Initialize AI orchestrator.
 
         Args:
-            ai_client: Gemini client for AI operations
+            ai_client: Claude or Gemini client for AI operations
             cache_client: Redis or other caching client
             storage_client: S3 or other storage client
         """
@@ -63,13 +64,24 @@ class AIOrchestrator:
         # Track generated classes for cleanup
         self._generated_modules = []
 
-    def _create_default_ai_client(self) -> GeminiClient:
-        """Create default AI client if none provided."""
+    def _create_default_ai_client(self):
+        """Create default AI client if none provided. Tries Claude first, then Gemini."""
+        # Try Claude first (preferred)
         try:
+            self.logger.info("Attempting to create Claude client")
+            return ClaudeClient()
+        except ValueError as e:
+            self.logger.warning(f"Could not create Claude client: {e}")
+
+        # Fall back to Gemini
+        try:
+            self.logger.info("Attempting to create Gemini client")
             return GeminiClient()
         except ValueError as e:
-            self.logger.warning(f"Could not create AI client: {e}")
-            return None
+            self.logger.warning(f"Could not create Gemini client: {e}")
+
+        self.logger.warning("No AI client could be created - API keys missing")
+        return None
 
     def orchestrate_fetch(self, raw_text: str) -> FetchResult:
         """
@@ -492,7 +504,7 @@ class AIDataFetchFactory:
     """
 
     def __init__(self,
-                 ai_client: Optional[GeminiClient] = None,
+                 ai_client: Optional[Any] = None,
                  cache_client: Optional[Any] = None,
                  storage_client: Optional[Any] = None):
         """Initialize the factory."""
