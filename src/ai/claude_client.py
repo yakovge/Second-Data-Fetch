@@ -283,26 +283,34 @@ Return only the JSON schema, no additional commentary:"""
         if domain_hints:
             domain_section = f"\nPreferred domains: {', '.join(domain_hints)}"
 
-        return f"""You are a web data specialist. Generate relevant URLs based on the user's data requirements.
+        return f"""You are a web data specialist. Generate relevant, topic-specific URLs based on the user's data requirements.
 
 User Requirements: {raw_text}{domain_section}
 
 Instructions:
-1. Generate exactly 2 relevant URLs that would contain the requested data
-2. For NYT: Look for specific topic sections first (e.g. war, conflict, defense), then broader sections
-3. Priority order: specific topic sections > world/politics sections > general sections
-4. Use section URLs like /section/[topic] (not /topic/ URLs which don't work)
-5. Focus on main section pages and RSS feeds rather than specific article URLs
+1. Generate exactly 2 relevant URLs that are SPECIFIC to the topic mentioned
+2. Analyze the query for geographic regions, topics, or subjects
+3. For different countries/regions, use different geographic sections:
+   - Germany/Europe: world/europe, business (for German companies)
+   - Russia/Eastern Europe: world/europe, world/asia (Russia spans both)
+   - China/Asia: world/asia, business (Chinese economy)
+   - Middle East: world/middleeast
+   - US topics: us/politics, us (domestic)
+   - Technology: technology, business
+   - Climate: climate, science
+4. Use section URLs like /section/[topic] (verified working sections only)
+5. Prioritize geographic specificity over generic world section
 6. Use HTTPS URLs only
-7. Return only valid, accessible URLs that actually exist
+7. Return only valid NYT section URLs that actually exist
 
-Examples of good NYT URLs by specificity:
-- https://www.nytimes.com/section/world/middleeast (war-related conflicts)
-- https://www.nytimes.com/section/world/europe (Ukraine war coverage)
-- https://www.nytimes.com/section/us/politics (political conflicts)
-- https://www.nytimes.com/section/world (broader coverage)
+Examples of TOPIC-SPECIFIC URL generation:
+Query "articles about Germany" → https://www.nytimes.com/section/world/europe, https://www.nytimes.com/section/business
+Query "articles about Russia" → https://www.nytimes.com/section/world/europe, https://www.nytimes.com/section/world/asia
+Query "articles about China" → https://www.nytimes.com/section/world/asia, https://www.nytimes.com/section/business
+Query "articles about technology" → https://www.nytimes.com/section/technology, https://www.nytimes.com/section/business
+Query "articles about climate" → https://www.nytimes.com/section/climate, https://www.nytimes.com/section/science
 
-Note: Use actual working sections like middleeast, europe, not fictional war-specific URLs
+IMPORTANT: Make URLs specific to the topic/geography mentioned, not generic world sections.
 
 Return URLs one per line, no additional text:"""
 
