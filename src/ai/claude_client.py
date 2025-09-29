@@ -395,7 +395,14 @@ REQUIREMENTS:
 6. Handle both single articles and article lists
 7. Add rate limiting appropriate for the detected website
 
-Generate a complete, adaptive implementation:
+CRITICAL IMPORT PATHS (use exactly as shown):
+```python
+from src.core.datafetch import DataFetch, FetchResult, FetchError
+from src.collectors.http_client import HTTPClient
+from src.collectors.browser_client import BrowserClient
+```
+
+Generate a complete, adaptive implementation using these exact imports:
 
 ```python"""
 
