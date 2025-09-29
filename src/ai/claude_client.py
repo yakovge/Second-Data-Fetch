@@ -288,7 +288,7 @@ Return only the JSON schema, no additional commentary:"""
 User Requirements: {raw_text}{domain_section}
 
 Instructions:
-1. Generate exactly 5 relevant URLs that are SPECIFIC to the topic mentioned
+1. Generate exactly 3 relevant URLs that are SPECIFIC to the topic mentioned
 2. Analyze the query for geographic regions, topics, or subjects
 3. For different countries/regions, use different geographic sections:
    - Germany/Europe: world/europe, business (for German companies)
@@ -303,12 +303,12 @@ Instructions:
 6. Use HTTPS URLs only
 7. Return only valid NYT section URLs that actually exist
 
-Examples of TOPIC-SPECIFIC URL generation (5 URLs each):
-Query "articles about Germany" → https://www.nytimes.com/section/world/europe, https://www.nytimes.com/section/business, https://www.nytimes.com/section/world, https://www.nytimes.com/section/us/politics, https://www.nytimes.com/section/opinion
-Query "articles about Russia" → https://www.nytimes.com/section/world/europe, https://www.nytimes.com/section/world/asia, https://www.nytimes.com/section/world, https://www.nytimes.com/section/us/politics, https://www.nytimes.com/section/opinion
-Query "articles about China" → https://www.nytimes.com/section/world/asia, https://www.nytimes.com/section/business, https://www.nytimes.com/section/technology, https://www.nytimes.com/section/world, https://www.nytimes.com/section/us/politics
-Query "articles about technology" → https://www.nytimes.com/section/technology, https://www.nytimes.com/section/business, https://www.nytimes.com/section/science, https://www.nytimes.com/section/opinion, https://www.nytimes.com/section/world
-Query "articles about climate" → https://www.nytimes.com/section/climate, https://www.nytimes.com/section/science, https://www.nytimes.com/section/opinion, https://www.nytimes.com/section/business, https://www.nytimes.com/section/world
+Examples of TOPIC-SPECIFIC URL generation (3 URLs each):
+Query "articles about Germany" → https://www.nytimes.com/section/world/europe, https://www.nytimes.com/section/business, https://www.nytimes.com/section/world
+Query "articles about Russia" → https://www.nytimes.com/section/world/europe, https://www.nytimes.com/section/world/asia, https://www.nytimes.com/section/opinion
+Query "articles about China" → https://www.nytimes.com/section/world/asia, https://www.nytimes.com/section/business, https://www.nytimes.com/section/technology
+Query "articles about technology" → https://www.nytimes.com/section/technology, https://www.nytimes.com/section/business, https://www.nytimes.com/section/science
+Query "articles about climate" → https://www.nytimes.com/section/climate, https://www.nytimes.com/section/science, https://www.nytimes.com/section/opinion
 
 IMPORTANT: Make URLs specific to the topic/geography mentioned, not generic world sections.
 
