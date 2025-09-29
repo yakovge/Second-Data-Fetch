@@ -103,6 +103,10 @@ class DataFetch(ABC):
         'wsj.com', 'www.wsj.com',
         'washingtonpost.com', 'www.washingtonpost.com',
         'theguardian.com', 'www.theguardian.com',
+        # Tech websites for testing unknown site adaptation
+        'techcrunch.com', 'www.techcrunch.com',
+        'arstechnica.com', 'www.arstechnica.com',
+        'wired.com', 'www.wired.com',
         # Test domains
         'httpbin.org', 'www.httpbin.org',
         'example.org', 'www.example.org',
