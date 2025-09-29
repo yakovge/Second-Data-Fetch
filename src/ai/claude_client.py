@@ -360,6 +360,9 @@ ADAPTIVE IMPLEMENTATION STRATEGY:
 2. DETECT common news site patterns (NYT, BBC, Reuters, CNN, Guardian, or unknown)
 3. ADAPT parsing strategy based on the specific website
 4. IMPLEMENT site-specific optimizations
+5. CRITICAL: Fetch from ALL URLs provided, not just the first one
+6. CRITICAL: Combine results from all websites into a unified list
+7. CRITICAL: Handle cases where some websites fail gracefully
 
 WEBSITE-SPECIFIC ADAPTATIONS:
 - NYT: Look for 'data-testid="headline"', 'section[name="articleBody"]'
@@ -395,12 +398,14 @@ def _get_adaptive_selectors(self, website_type):
 REQUIREMENTS:
 1. Inherit from DataFetch and implement ALL required methods: fetch(), afetch(), fetch_stream(), afetch_stream(), validate_data(), extract_structure()
 2. Use HTTPClient or BrowserClient based on method parameter
-3. Implement adaptive content extraction based on detected website
-4. Include robust error handling for unknown sites
+3. Implement TRULY ADAPTIVE content extraction that works across ALL target websites, not just one
+4. Include robust error handling for unknown sites and graceful fallbacks
 5. Extract INDIVIDUAL articles with title, summary, url, and publish_date when possible - NOT search pages
 6. Handle both single articles and article lists - avoid search page URLs, prefer section URLs that list articles
 7. Add rate limiting appropriate for the detected website
 8. CRITICAL: Implement fetch_stream() and afetch_stream() methods that yield individual articles
+9. CRITICAL: Use MULTIPLE selector strategies per website to ensure article extraction from different sites
+10. CRITICAL: Return articles from ALL provided URLs, not just the first one
 
 CRITICAL IMPORT PATHS (use exactly as shown):
 ```python

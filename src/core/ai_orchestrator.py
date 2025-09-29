@@ -225,79 +225,113 @@ class AIOrchestrator:
             print(f"      {i}. {url}")
         return fallback_urls
 
-    def _collect_sample_data(self, urls: List[str], raw_text: str) -> Optional[Any]:
+    def _collect_sample_data(self, urls: List[str], raw_text: str) -> Optional[Dict[str, Any]]:
         """
-        Collect sample data from URLs to understand structure.
+        Collect sample data from multiple URLs to understand different website structures.
 
         Args:
             urls: URLs to sample from
             raw_text: Original request text
 
         Returns:
-            Sample data or None if collection fails
+            Dictionary mapping URLs to their sample data, or None if all fail
         """
-        self.logger.info("Step 2: Collecting sample data")
+        self.logger.info("Step 2: Collecting sample data from multiple websites")
         print(f"\n[SAMPLE COLLECTION]")
 
         if not urls:
             print("   [ERROR] No URLs available for sampling")
             return None
 
-        sample_url = urls[0]
-        print(f"   Sampling from: {sample_url}")
+        # Sample from up to 3 URLs to understand different website structures
+        sample_urls = urls[:3]
+        print(f"   Sampling from {len(sample_urls)} websites for diverse structure analysis:")
+        for i, url in enumerate(sample_urls, 1):
+            print(f"      {i}. {url}")
 
-        # Create a simple spec for sampling
-        sample_spec = FetchSpec(
-            raw_text=raw_text,
-            urls=[sample_url],  # Just sample first URL
-            expected_format=DataFormat.HTML,
-            method=FetchMethod.REQUESTS,
-            timeout=15,
-            retry_count=1
-        )
+        sample_results = {}
+        successful_samples = 0
 
-        try:
-            # Use HTTPClient for quick sampling
-            client = HTTPClient(sample_spec, self.cache_client)
-            result = client.fetch()
+        for i, sample_url in enumerate(sample_urls, 1):
+            try:
+                print(f"   [{i}/{len(sample_urls)}] Sampling {sample_url}...")
 
-            if result.error:
-                self.logger.warning(f"Sample collection failed: {result.error}")
-                print(f"   [FAILED] {result.error}")
-                return None
+                # Create a simple spec for sampling
+                sample_spec = FetchSpec(
+                    raw_text=raw_text,
+                    urls=[sample_url],
+                    expected_format=DataFormat.HTML,
+                    method=FetchMethod.REQUESTS,
+                    timeout=10,  # Shorter timeout for sampling
+                    retry_count=1
+                )
 
-            self.logger.info("Sample data collected successfully")
-            print(f"   [SUCCESS] Collected sample data ({len(str(result.data))} characters)")
-            return result.data
+                # Use HTTPClient for quick sampling
+                client = HTTPClient(sample_spec, self.cache_client)
+                result = client.fetch()
 
-        except Exception as e:
-            self.logger.warning(f"Sample collection error: {str(e)}")
-            print(f"   [ERROR] {str(e)}")
+                if result.error:
+                    self.logger.warning(f"Sample collection failed for {sample_url}: {result.error}")
+                    print(f"       [FAILED] {result.error}")
+                    continue
+
+                # Extract domain for identification
+                from urllib.parse import urlparse
+                domain = urlparse(sample_url).netloc.replace('www.', '')
+
+                sample_results[domain] = {
+                    'url': sample_url,
+                    'data': result.data,
+                    'size': len(str(result.data))
+                }
+                successful_samples += 1
+                print(f"       [SUCCESS] {len(str(result.data))} characters")
+
+            except Exception as e:
+                self.logger.warning(f"Sample collection error for {sample_url}: {str(e)}")
+                print(f"       [ERROR] {str(e)}")
+                continue
+
+        if successful_samples == 0:
+            print("   [FAILED] No samples collected from any website")
             return None
 
-    def _generate_structure(self, sample_data: Optional[Any], raw_text: str) -> Dict[str, Any]:
+        self.logger.info(f"Successfully collected samples from {successful_samples} websites")
+        print(f"   [SUCCESS] Collected samples from {successful_samples}/{len(sample_urls)} websites")
+        for domain, info in sample_results.items():
+            print(f"      {domain}: {info['size']} characters")
+
+        return sample_results
+
+    def _generate_structure(self, sample_data: Optional[Dict[str, Any]], raw_text: str) -> Dict[str, Any]:
         """
-        Generate structure definition using AI.
+        Generate structure definition using AI from multiple website samples.
 
         Args:
-            sample_data: Sample data from URLs
+            sample_data: Dictionary mapping domains to their sample data
             raw_text: Original request text
 
         Returns:
             Structure definition dictionary
         """
-        self.logger.info("Step 3: Generating data structure")
+        self.logger.info("Step 3: Generating data structure from multiple samples")
 
-        if self.ai_client and sample_data:
+        if self.ai_client and sample_data and isinstance(sample_data, dict):
             try:
-                # Add website context to structure generation
-                target_sites = self._detect_target_websites(raw_text)
-                context = f"Target websites: {target_sites}. Query: {raw_text}. Adapt structure to common news article patterns."
+                # Combine sample data from different websites
+                combined_context = f"Query: {raw_text}. Multiple website samples provided to create unified structure for news articles."
+
+                # Use the first successful sample for structure generation
+                # but include info about all websites in context
+                domains = list(sample_data.keys())
+                first_sample = list(sample_data.values())[0]['data']
+
+                enhanced_context = f"{combined_context} Websites sampled: {', '.join(domains)}. Create structure that works across different news sites."
 
                 structure = self.ai_client.generate_structure_from_sample(
-                    sample_data, context=context
+                    first_sample, context=enhanced_context
                 )
-                self.logger.info(f"AI generated adaptive structure for {len(target_sites)} websites")
+                self.logger.info(f"AI generated unified structure from {len(domains)} website samples")
                 return structure
             except Exception as e:
                 self.logger.warning(f"AI structure generation failed: {str(e)}")
@@ -331,13 +365,13 @@ class AIOrchestrator:
         )
 
     def _generate_implementation(self, spec: FetchSpec,
-                               sample_data: Optional[Any]) -> Type[DataFetch]:
+                               sample_data: Optional[Dict[str, Any]]) -> Type[DataFetch]:
         """
-        Generate DataFetch implementation using AI.
+        Generate DataFetch implementation using AI with multi-website awareness.
 
         Args:
             spec: Fetch specification
-            sample_data: Sample data for reference
+            sample_data: Dictionary mapping domains to their sample data
 
         Returns:
             Generated DataFetch class
@@ -360,9 +394,18 @@ class AIOrchestrator:
             for i, url in enumerate(spec.urls, 1):
                 print(f"      {i}. {url}")
 
+            # Prepare enhanced sample data with multi-site context
+            enhanced_sample = None
+            if sample_data and isinstance(sample_data, dict):
+                domains = list(sample_data.keys())
+                print(f"   Sample data from: {', '.join(domains)}")
+                # Use the largest sample for generation but include context about all
+                largest_sample = max(sample_data.values(), key=lambda x: x['size'])
+                enhanced_sample = largest_sample['data']
+
             # Generate Python code using AI with website-specific adaptations
             code = self.ai_client.generate_datafetch_implementation(
-                spec, sample_data, "src.core.datafetch.DataFetch"
+                spec, enhanced_sample, "src.core.datafetch.DataFetch"
             )
 
             # Compile and load the generated code
