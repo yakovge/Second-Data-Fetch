@@ -160,6 +160,7 @@ class HTTPClient(DataFetch):
         for i, url in enumerate(self._spec.urls, 1):
             try:
                 self.logger.info(f"Processing URL {i}/{len(self._spec.urls)}: {url}")
+                print(f"   [HTTP] Processing URL {i}/{len(self._spec.urls)}: {url}")
 
                 # Try cache first
                 cached_result = None
@@ -169,6 +170,7 @@ class HTTPClient(DataFetch):
                 if cached_result:
                     result = cached_result
                     self.logger.info(f"Cache hit for {url}")
+                    print(f"   [HTTP] Cache hit for {url}")
                 else:
                     # Fetch individual URL
                     result = self._fetch_single_url(url)
@@ -179,20 +181,24 @@ class HTTPClient(DataFetch):
 
                 if result.error is None:
                     # Combine data from this URL
+                    data_size = len(result.data) if isinstance(result.data, (list, tuple)) else 1
                     if isinstance(result.data, list):
                         all_data.extend(result.data)
                     else:
                         all_data.append(result.data)
                     successful_urls.append(url)
                     self.logger.info(f"Successfully fetched from {url}")
+                    print(f"   [HTTP] SUCCESS: {url} -> {data_size} items")
                 else:
                     failed_urls.append({'url': url, 'error': result.error})
                     self.logger.warning(f"Failed to fetch from {url}: {result.error}")
+                    print(f"   [HTTP] FAILED: {url} -> {result.error}")
 
                 total_fetch_time += result.execution_time
 
             except Exception as e:
                 self.logger.error(f"Exception fetching {url}: {str(e)}")
+                print(f"   [HTTP] EXCEPTION: {url} -> {str(e)}")
                 failed_urls.append({'url': url, 'error': str(e)})
 
         # Record metrics

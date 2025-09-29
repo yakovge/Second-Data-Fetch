@@ -278,57 +278,130 @@ Requirements:
 Return only the JSON schema, no additional commentary:"""
 
     def _create_url_generation_prompt(self, raw_text: str, domain_hints: Optional[List[str]]) -> str:
-        """Create prompt for URL generation."""
-        domain_section = ""
-        if domain_hints:
-            domain_section = f"\nPreferred domains: {', '.join(domain_hints)}"
+        """Create prompt for URL generation with dynamic website-specific guidance."""
 
-        return f"""You are an adaptive web data specialist. Generate topic-specific URLs for ANY news website mentioned in the query, or multiple major sites if none specified.
+        # Generate dynamic content based on target domains
+        if domain_hints:
+            target_guidance = self._generate_dynamic_url_guidance(domain_hints, raw_text)
+            domain_section = f"\nTarget domains: {', '.join(domain_hints)}"
+        else:
+            target_guidance = self._generate_multi_site_url_guidance(raw_text)
+            domain_section = "\nNo specific sites mentioned - generate from diverse sources"
+
+        return f"""You are an adaptive web data specialist. Generate topic-specific URLs for ANY news website.
 
 User Requirements: {raw_text}{domain_section}
 
-ADAPTIVE WEBSITE DETECTION:
-1. If query mentions specific sites (BBC, Reuters, CNN, Guardian, etc.): Focus on that site
-2. If no site mentioned: Generate URLs from 3 different major news sites for diversity
-3. Learn and adapt to ANY website's URL structure by analyzing the domain
+{target_guidance}
 
-WEBSITE PATTERN ANALYSIS:
-- NYT: /section/[topic] format (politics, world/us, business, technology, etc.) - AVOID /search URLs
-- BBC: /news/[topic] format (world, politics, business, technology) - AVOID /search URLs
-- Reuters: /[topic]/ or /world/[region]/ format (politics, world/us, business)
-- CNN: /politics/, /business/, /world/ sections - AVOID search pages
-- Guardian: /[section]/[topic] format (world, business, technology, etc.)
-- Unknown sites: Analyze domain and infer likely URL patterns
+CRITICAL REQUIREMENTS:
+1. Generate section/category URLs that list articles, NEVER search pages (/search?q=)
+2. Focus on the specific websites mentioned or provided in domain hints
+3. Use website-appropriate URL patterns for each domain
+4. Generate 2-3 relevant URLs per target website
+5. Ensure URLs lead to article listings, not individual articles
 
-CRITICAL: Always generate section/category URLs that list articles, NEVER search page URLs like /search?q= or similar
+ADAPTIVE APPROACH:
+- If specific website mentioned: Focus on that site's URL patterns
+- If multiple sites: Use each site's optimal URL structure
+- If unknown site: Use common news site patterns
+- Always prioritize section/category pages over search results
 
-ADAPTIVE URL GENERATION:
-1. Detect target website(s) from query
-2. For known sites: Use established patterns
-3. For unknown sites: Infer patterns based on common news site structures
-4. Generate 3 relevant URLs per target site
+Return only URLs, one per line, no additional text or explanations:"""
 
-Examples of ADAPTIVE generation:
-Query "articles about climate from BBC" → https://www.bbc.com/news/science-environment, https://www.bbc.com/news/world, https://www.bbc.com/news/business
-Query "technology news from Reuters" → https://www.reuters.com/technology/, https://www.reuters.com/business/, https://www.reuters.com/world/
-Query "articles about Trump" (no site) → VARY the order, don't always start with NYT:
-  https://www.bbc.com/news/politics
-  https://www.reuters.com/world/us/
-  https://www.nytimes.com/section/politics
-Query "articles about politics" →
-  https://www.reuters.com/world/us/
-  https://www.nytimes.com/section/politics
-  https://www.bbc.com/news/politics
+    def _generate_dynamic_url_guidance(self, domain_hints: List[str], raw_text: str) -> str:
+        """Generate dynamic URL guidance based on specific target domains."""
+        guidance_parts = []
 
-UNKNOWN WEBSITE ADAPTATION:
-For unfamiliar domains, try these common patterns:
-- /news/[topic]
-- /[topic]/
-- /section/[topic]
-- /category/[topic]
-- /[year]/[month]/[day]/[topic]/
+        for domain in domain_hints:
+            if 'nytimes.com' in domain:
+                guidance_parts.append("""
+NYT URL PATTERNS:
+- Politics: https://www.nytimes.com/section/politics
+- Business: https://www.nytimes.com/section/business
+- Technology: https://www.nytimes.com/section/technology
+- World: https://www.nytimes.com/section/world
+- US: https://www.nytimes.com/section/us
+Format: /section/[topic-name]""")
 
-Return URLs one per line, no additional text:"""
+            elif 'bbc.com' in domain or 'bbc.co.uk' in domain:
+                guidance_parts.append("""
+BBC URL PATTERNS:
+- World: https://www.bbc.com/news/world
+- Politics: https://www.bbc.com/news/politics
+- Business: https://www.bbc.com/news/business
+- Technology: https://www.bbc.com/news/technology
+- Science: https://www.bbc.com/news/science-environment
+Format: /news/[topic-name]""")
+
+            elif 'reuters.com' in domain:
+                guidance_parts.append("""
+REUTERS URL PATTERNS:
+- Technology: https://www.reuters.com/technology/
+- Business: https://www.reuters.com/business/
+- World: https://www.reuters.com/world/
+- Markets: https://www.reuters.com/markets/
+- Politics: https://www.reuters.com/world/us/
+Format: /[topic]/ or /world/[region]/
+NOTE: Reuters may have access restrictions (401 errors)""")
+
+            elif 'cnn.com' in domain:
+                guidance_parts.append("""
+CNN URL PATTERNS:
+- Politics: https://www.cnn.com/politics
+- Business: https://www.cnn.com/business
+- World: https://www.cnn.com/world
+- Technology: https://www.cnn.com/business/tech
+- US: https://www.cnn.com/us
+Format: /[topic-name]""")
+
+            elif 'guardian.com' in domain or 'theguardian.com' in domain:
+                guidance_parts.append("""
+GUARDIAN URL PATTERNS:
+- World: https://www.theguardian.com/world
+- Politics: https://www.theguardian.com/politics
+- Business: https://www.theguardian.com/business
+- Technology: https://www.theguardian.com/technology
+- Environment: https://www.theguardian.com/environment
+Format: /[topic-name]""")
+
+            else:
+                guidance_parts.append(f"""
+UNKNOWN DOMAIN ({domain}) PATTERNS:
+- Try: {domain}/news/[topic]
+- Try: {domain}/[topic]/
+- Try: {domain}/section/[topic]
+- Try: {domain}/category/[topic]
+Use common news site URL structures""")
+
+        return "\n".join(guidance_parts)
+
+    def _generate_multi_site_url_guidance(self, raw_text: str) -> str:
+        """Generate guidance for multi-site URL generation when no specific sites mentioned."""
+        return """
+MULTI-SITE DIVERSE URL GENERATION:
+Generate URLs from 3 different major news sources for maximum diversity.
+
+ROTATION STRATEGY - vary the order to avoid bias:
+Set A: BBC → CNN → NYT
+Set B: Reuters → Guardian → NYT
+Set C: CNN → BBC → Guardian
+
+WEBSITE-SPECIFIC PATTERNS:
+- BBC: /news/[topic] (world, politics, business, technology)
+- CNN: /[topic] (politics, business, world, tech)
+- NYT: /section/[topic] (politics, business, technology, world, us)
+- Reuters: /[topic]/ (technology, business, world)
+- Guardian: /[topic] (world, politics, business, technology)
+
+TOPIC MAPPING:
+- Politics → politics, world/us sections
+- Technology → technology, business/tech sections
+- Business → business, markets sections
+- World → world, international sections
+- Climate → science-environment, world sections
+
+Choose 3 different sites and generate 1 relevant URL per site."""
 
     def _create_implementation_prompt(self,
                                    raw_text: str,
@@ -338,6 +411,26 @@ Return URLs one per line, no additional text:"""
                                    sample_data: str,
                                    base_class_path: str) -> str:
         """Create prompt for DataFetch implementation generation."""
+
+        # Detect target websites for dynamic adaptation
+        website_types = set()
+        for url in urls:
+            if 'nytimes.com' in url:
+                website_types.add('nyt')
+            elif 'bbc.com' in url or 'bbc.co.uk' in url:
+                website_types.add('bbc')
+            elif 'reuters.com' in url:
+                website_types.add('reuters')
+            elif 'cnn.com' in url:
+                website_types.add('cnn')
+            elif 'guardian.com' in url or 'theguardian.com' in url:
+                website_types.add('guardian')
+            else:
+                website_types.add('unknown')
+
+        # Create website-specific guidance
+        website_guidance = self._generate_website_specific_guidance(website_types)
+
         sample_section = ""
         if sample_data:
             sample_section = f"""
@@ -347,115 +440,230 @@ Sample Data Reference:
 {sample_data}
 ```"""
 
-        return f"""You are an adaptive Python code generator that creates DataFetch implementations for ANY news website. Analyze the provided URLs and adapt to their specific structure.
+        return f"""You are an adaptive Python code generator that creates DataFetch implementations for ANY news website.
 
+Target websites detected: {', '.join(website_types)}
 Requirements: {raw_text}
 URLs: {', '.join(urls)}
 Expected Format: {expected_format.value}
 Fetch Method: {method.value}
 Base Class: {base_class_path}{sample_section}
 
-ADAPTIVE IMPLEMENTATION STRATEGY:
-1. ANALYZE URLs to determine website domain and structure
-2. DETECT common news site patterns (NYT, BBC, Reuters, CNN, Guardian, or unknown)
-3. ADAPT parsing strategy based on the specific website
-4. IMPLEMENT site-specific optimizations
-5. CRITICAL: Fetch from ALL URLs provided, not just the first one
-6. CRITICAL: Combine results from all websites into a unified list
-7. CRITICAL: Handle cases where some websites fail gracefully
-8. CRITICAL: Use different selectors per website - NYT selectors won't work on BBC/Reuters
-9. CRITICAL: Parse each URL with website-appropriate logic, not one-size-fits-all
+{website_guidance}
 
-WEBSITE-SPECIFIC ADAPTATIONS:
-- NYT: Look for 'data-testid="headline"', 'section[name="articleBody"]'
-- BBC: Look for 'h1', '[data-component="text-block"]'
-- Reuters: Look for 'h1', '[data-module="ArticleBody"]'
-- CNN: Look for 'h1', '.zn-body__paragraph'
-- Guardian: Look for '[data-gu-name="headline"]', '.content__article-body'
-- Unknown sites: Use general selectors and adaptive discovery
-
-ADAPTIVE PARSING LOGIC:
-```python
-def _detect_website_type(self, url):
-    if 'nytimes.com' in url: return 'nyt'
-    elif 'bbc.com' in url or 'bbc.co.uk' in url: return 'bbc'
-    elif 'reuters.com' in url: return 'reuters'
-    elif 'cnn.com' in url: return 'cnn'
-    elif 'guardian.com' in url or 'theguardian.com' in url: return 'guardian'
-    else: return 'unknown'
-
-def _get_adaptive_selectors(self, website_type):
-    selectors = {{
-        'nyt': {{'title': 'h1[data-testid="headline"]', 'content': 'section[name="articleBody"]'}},
-        'bbc': {{'title': 'h1', 'content': '[data-component="text-block"]'}},
-        'reuters': {{'title': 'h1', 'content': '[data-module="ArticleBody"]'}},
-        'cnn': {{'title': 'h1', 'content': '.zn-body__paragraph'}},
-        'guardian': {{'title': '[data-gu-name="headline"]', 'content': '.content__article-body'}},
-        'unknown': {{'title': 'h1, .headline, .title, [class*="title"]',
-                     'content': '.content, .article-body, [class*="content"], [class*="body"]'}}
-    }}
-    return selectors.get(website_type, selectors['unknown'])
-```
-
-REQUIREMENTS:
-1. Inherit from DataFetch and implement ALL required methods: fetch(), afetch(), fetch_stream(), afetch_stream(), validate_data(), extract_structure()
+CRITICAL REQUIREMENTS:
+1. Inherit from DataFetch and implement ALL required methods
 2. Use HTTPClient or BrowserClient based on method parameter
-3. Implement TRULY ADAPTIVE content extraction that works across ALL target websites, not just one
-4. Include robust error handling for unknown sites and graceful fallbacks
-5. Extract INDIVIDUAL articles with title, summary, url, and publish_date when possible - NOT search pages
-6. Handle both single articles and article lists - avoid search page URLs, prefer section URLs that list articles
-7. Add rate limiting appropriate for the detected website
-8. CRITICAL: Implement fetch_stream() and afetch_stream() methods that yield individual articles
-9. CRITICAL: Use MULTIPLE selector strategies per website to ensure article extraction from different sites
-10. CRITICAL: Process ALL URLs in spec.urls list - iterate through each URL and combine results
+3. Process ALL URLs in the spec, not just the first one
+4. Handle website failures gracefully - continue with other URLs
+5. Combine results from all successful URLs into unified list
+6. Use website-specific extraction logic for each domain
 
-MULTI-URL PROCESSING PATTERN (REQUIRED):
+TEMPLATE (use this exact structure):
 ```python
-def fetch(self) -> FetchResult:
-    all_data = []
-    successful_urls = []
+from datetime import datetime
+from typing import Dict, List, Optional, Any, Generator, AsyncGenerator
+import time
+import asyncio
 
-    for url in self.spec.urls:
-        try:
-            # Determine website type for adaptive parsing
-            website_type = self._detect_website_type(url)
-
-            # Fetch from this specific URL with site-specific logic
-            if website_type == 'nyt':
-                articles = self._extract_nyt_articles(url)
-            elif website_type == 'bbc':
-                articles = self._extract_bbc_articles(url)
-            elif website_type == 'reuters':
-                articles = self._extract_reuters_articles(url)
-            else:
-                articles = self._extract_generic_articles(url)
-
-            if articles:
-                all_data.extend(articles if isinstance(articles, list) else [articles])
-                successful_urls.append(url)
-        except Exception as e:
-            # Log error but continue with other URLs
-            continue
-
-    return FetchResult(data=all_data, ...)
-
-def _detect_website_type(self, url):
-    if 'nytimes.com' in url: return 'nyt'
-    elif 'bbc.com' in url: return 'bbc'
-    elif 'reuters.com' in url: return 'reuters'
-    return 'generic'
-```
-
-CRITICAL IMPORT PATHS (use exactly as shown):
-```python
-from src.core.datafetch import DataFetch, FetchResult, FetchError
+from src.core.datafetch import DataFetch, FetchResult, DataFormat, FetchMethod, FetchError, ValidationError
 from src.collectors.http_client import HTTPClient
 from src.collectors.browser_client import BrowserClient
+
+class AdaptiveNewsFetch(DataFetch):
+    def __init__(self, spec, cache_client=None, storage_client=None, ai_client=None):
+        super().__init__(spec, cache_client, storage_client, ai_client)
+
+        # Set up logging
+        import logging
+        self.logger = logging.getLogger(f"datafetch.adaptive.{{self._session_id[:8]}}")
+        self.logger.setLevel(logging.INFO)
+
+        # Choose client based on method
+        if spec.method == FetchMethod.PLAYWRIGHT:
+            self.client = BrowserClient(spec, cache_client, storage_client, ai_client)
+        else:
+            self.client = HTTPClient(spec, cache_client, storage_client, ai_client)
+
+    def fetch(self) -> FetchResult:
+        \"\"\"Fetch from ALL URLs and combine results.\"\"\"
+        start_time = time.time()
+
+        # Use the client's fetch_all method if available for proper multi-URL handling
+        if hasattr(self.client, 'fetch_all'):
+            result = self.client.fetch_all()
+        else:
+            result = self.client.fetch()
+
+        # Apply website-specific processing to the combined results
+        if result.data and not result.error:
+            processed_data = []
+
+            # Process each item with website-specific logic
+            if isinstance(result.data, list):
+                for item in result.data:
+                    # Try to determine source website from item data
+                    source_url = item.get('source_url', '') if isinstance(item, dict) else ''
+                    website_type = self._detect_website_type(source_url) if source_url else 'unknown'
+
+                    standardized_item = self._standardize_article(item, source_url)
+                    processed_data.append(standardized_item)
+            else:
+                # Single item result
+                source_url = result.url if hasattr(result, 'url') else ''
+                website_type = self._detect_website_type(source_url)
+                standardized_item = self._standardize_article(result.data, source_url)
+                processed_data.append(standardized_item)
+
+            # Update result with processed data
+            result.data = processed_data
+            result.execution_time = time.time() - start_time
+
+        return result
+
+    async def afetch(self) -> FetchResult:
+        \"\"\"Async version of fetch.\"\"\"
+        return await asyncio.get_event_loop().run_in_executor(None, self.fetch)
+
+    def fetch_stream(self) -> Generator[FetchResult, None, None]:
+        \"\"\"Stream individual articles.\"\"\"
+        # Get all results first
+        main_result = self.fetch()
+
+        if main_result.data and isinstance(main_result.data, list):
+            # Yield each article as individual result
+            for article in main_result.data:
+                yield FetchResult(
+                    url=article.get('url', main_result.url) if isinstance(article, dict) else main_result.url,
+                    data=article,
+                    timestamp=datetime.now(),
+                    format=self.spec.expected_format,
+                    method=self.spec.method
+                )
+        elif main_result.data:
+            # Single result
+            yield main_result
+        else:
+            # No data or error
+            yield main_result
+
+    async def afetch_stream(self) -> AsyncGenerator[FetchResult, None]:
+        \"\"\"Async stream version.\"\"\"
+        for result in self.fetch_stream():
+            yield result
+
+    def _detect_website_type(self, url: str) -> str:
+        \"\"\"Detect website type from URL.\"\"\"
+        url_lower = url.lower()
+        if 'nytimes.com' in url_lower:
+            return 'nyt'
+        elif 'bbc.com' in url_lower or 'bbc.co.uk' in url_lower:
+            return 'bbc'
+        elif 'reuters.com' in url_lower:
+            return 'reuters'
+        elif 'cnn.com' in url_lower:
+            return 'cnn'
+        elif 'guardian.com' in url_lower or 'theguardian.com' in url_lower:
+            return 'guardian'
+        else:
+            return 'unknown'
+
+
+    def _standardize_article(self, article: Any, source_url: str) -> Dict[str, Any]:
+        \"\"\"Standardize article format across websites.\"\"\"
+        if isinstance(article, dict):
+            return {{
+                'title': article.get('title', 'No title'),
+                'summary': article.get('summary', article.get('content', '')[:200] + '...' if article.get('content') else 'No summary'),
+                'url': article.get('url', source_url),
+                'author': article.get('author', 'Unknown'),
+                'published_date': article.get('published_date', article.get('timestamp', 'Unknown')),
+                'source_url': source_url
+            }}
+        else:
+            return {{
+                'title': str(article)[:100] if article else 'No title',
+                'summary': 'No summary available',
+                'url': source_url,
+                'author': 'Unknown',
+                'published_date': 'Unknown',
+                'source_url': source_url
+            }}
+
+    def validate_data(self, data: Any) -> bool:
+        \"\"\"Validate fetched data.\"\"\"
+        return data is not None and (isinstance(data, (list, dict)) and len(data) > 0 if data else False)
+
+    def extract_structure(self, sample_data: Any) -> Dict[str, Any]:
+        \"\"\"Extract structure from sample data.\"\"\"
+        return {{'type': 'array', 'items': {{'type': 'object'}}}}
 ```
 
-Generate a complete, adaptive implementation using these exact imports:
+Generate the complete implementation with proper website-specific extraction logic."""
 
-```python"""
+    def _generate_website_specific_guidance(self, website_types: set) -> str:
+        """Generate dynamic website-specific guidance for AI prompts."""
+        guidance_parts = []
+
+        if 'nyt' in website_types:
+            guidance_parts.append("""
+NYT-SPECIFIC GUIDANCE:
+- URL patterns: /section/[topic] (politics, business, technology, world)
+- Key selectors: h1[data-testid="headline"], section[name="articleBody"], .css-* classes
+- Article links: look for date-based URLs (/2024/, /2025/)
+- Content structure: typically has structured data, rich metadata""")
+
+        if 'bbc' in website_types:
+            guidance_parts.append("""
+BBC-SPECIFIC GUIDANCE:
+- URL patterns: /news/[topic] (world, business, technology, politics)
+- Key selectors: h1, [data-component="text-block"], .media-caption
+- Article links: look for /news/ URLs with topic categories
+- Content structure: clean HTML structure, good semantic markup""")
+
+        if 'reuters' in website_types:
+            guidance_parts.append("""
+REUTERS-SPECIFIC GUIDANCE:
+- URL patterns: /[topic]/ (technology, business, world)
+- Key selectors: h1, [data-module="ArticleBody"], .article-body
+- Article links: domain-relative URLs, date-based structure
+- ACCESS ISSUES: Reuters may return 401 errors - handle gracefully
+- Fallback: if 401 error, return empty results and continue with other sites""")
+
+        if 'cnn' in website_types:
+            guidance_parts.append("""
+CNN-SPECIFIC GUIDANCE:
+- URL patterns: /politics/, /business/, /world/ sections
+- Key selectors: h1, .zn-body__paragraph, .headline
+- Article links: full URLs with date structure
+- Content structure: lots of dynamic content, may need browser rendering""")
+
+        if 'guardian' in website_types:
+            guidance_parts.append("""
+GUARDIAN-SPECIFIC GUIDANCE:
+- URL patterns: /[section]/[topic] (world, business, technology)
+- Key selectors: [data-gu-name="headline"], .content__article-body
+- Article links: guardian.com or theguardian.com domains
+- Content structure: semantic HTML, good article metadata""")
+
+        if 'unknown' in website_types:
+            guidance_parts.append("""
+UNKNOWN SITE GUIDANCE:
+- Use generic selectors: h1, .headline, .title, [class*="title"]
+- Content selectors: .content, .article-body, [class*="content"], [class*="body"]
+- Try multiple selector strategies
+- Graceful degradation if specific patterns fail""")
+
+        # Add general multi-site guidance
+        guidance_parts.append("""
+MULTI-SITE PROCESSING:
+- Handle each website type differently in the same implementation
+- If one site fails (like Reuters 401), continue with others
+- Combine results from all successful sites
+- Standardize output format across all sites
+- Use website detection to choose appropriate parsing strategy""")
+
+        return "\n".join(guidance_parts)
 
     def _generate_with_retry(self, prompt: str, max_retries: int = 3, max_tokens: Optional[int] = None) -> str:
         """Generate response with retry logic."""

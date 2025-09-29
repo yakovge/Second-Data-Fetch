@@ -171,12 +171,13 @@ class AIOrchestrator:
         # If no specific sites mentioned, use diverse multi-site approach with rotation
         if not detected_sites:
             # Rotate the order to avoid NYT bias - use different starting points
+            # Use more reliable sites: BBC, CNN, NYT (avoiding Reuters 401 issues)
             import hashlib
             query_hash = int(hashlib.md5(raw_text.encode()).hexdigest()[:8], 16)
             site_lists = [
-                ['bbc.com', 'reuters.com', 'nytimes.com'],
-                ['reuters.com', 'nytimes.com', 'bbc.com'],
-                ['nytimes.com', 'bbc.com', 'reuters.com']
+                ['bbc.com', 'cnn.com', 'nytimes.com'],
+                ['cnn.com', 'nytimes.com', 'bbc.com'],
+                ['nytimes.com', 'bbc.com', 'cnn.com']
             ]
             return site_lists[query_hash % len(site_lists)]
 
@@ -326,20 +327,21 @@ class AIOrchestrator:
 
         if self.ai_client and sample_data and isinstance(sample_data, dict):
             try:
-                # Combine sample data from different websites
+                # Intelligently combine samples from ALL websites
+                domains = list(sample_data.keys())
                 combined_context = f"Query: {raw_text}. Multiple website samples provided to create unified structure for news articles."
 
-                # Use the first successful sample for structure generation
-                # but include info about all websites in context
-                domains = list(sample_data.keys())
-                first_sample = list(sample_data.values())[0]['data']
+                # Create comprehensive sample combining data from all websites
+                combined_sample = self._create_unified_sample_from_multiple_sites(sample_data)
 
-                enhanced_context = f"{combined_context} Websites sampled: {', '.join(domains)}. Create structure that works across different news sites."
+                enhanced_context = f"{combined_context} Websites sampled: {', '.join(domains)}. " \
+                                 f"Sample combines data patterns from {len(domains)} different news sites. " \
+                                 f"Create structure that works universally across all these sites."
 
                 structure = self.ai_client.generate_structure_from_sample(
-                    first_sample, context=enhanced_context
+                    combined_sample, context=enhanced_context
                 )
-                self.logger.info(f"AI generated unified structure from {len(domains)} website samples")
+                self.logger.info(f"AI generated unified structure from {len(domains)} website samples using combined approach")
                 return structure
             except Exception as e:
                 self.logger.warning(f"AI structure generation failed: {str(e)}")
@@ -353,6 +355,154 @@ class AIOrchestrator:
         # Final fallback - basic structure
         self.logger.info("Using basic fallback structure")
         return {"type": "object", "properties": {}}
+
+    def _create_unified_sample_from_multiple_sites(self, sample_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create a unified sample that combines patterns from all website samples.
+        This eliminates single-source bias by incorporating diversity from all sites.
+
+        Args:
+            sample_data: Dictionary mapping domains to their sample data
+
+        Returns:
+            Unified sample combining patterns from all sites
+        """
+        if not sample_data:
+            return {}
+
+        unified_sample = {
+            "multi_site_analysis": {
+                "total_sites": len(sample_data),
+                "sites_analyzed": list(sample_data.keys())
+            },
+            "site_samples": {}
+        }
+
+        # Include sample from each website with metadata
+        for domain, site_info in sample_data.items():
+            site_data = site_info.get('data', {})
+            site_size = site_info.get('size', 0)
+
+            # Extract key patterns from each site
+            site_summary = {
+                "domain": domain,
+                "data_size": site_size,
+                "sample_structure": self._analyze_sample_structure(site_data),
+                "sample_content": self._extract_sample_content(site_data, max_length=500)
+            }
+
+            unified_sample["site_samples"][domain] = site_summary
+
+        # Find the most informative sample (largest, most structured)
+        best_sample = self._select_best_sample_for_ai(sample_data)
+        if best_sample:
+            unified_sample["primary_sample"] = best_sample
+
+        # Add cross-site pattern analysis
+        unified_sample["cross_site_patterns"] = self._analyze_cross_site_patterns(sample_data)
+
+        return unified_sample
+
+    def _analyze_sample_structure(self, data: Any) -> Dict[str, Any]:
+        """Analyze the structure of a sample to understand its patterns."""
+        if isinstance(data, dict):
+            return {
+                "type": "object",
+                "keys": list(data.keys())[:10],  # Limit to first 10 keys
+                "depth": self._calculate_dict_depth(data)
+            }
+        elif isinstance(data, list):
+            return {
+                "type": "array",
+                "length": len(data),
+                "item_type": type(data[0]).__name__ if data else "unknown"
+            }
+        else:
+            return {"type": type(data).__name__, "length": len(str(data))}
+
+    def _extract_sample_content(self, data: Any, max_length: int = 500) -> str:
+        """Extract meaningful content sample for AI analysis."""
+        if isinstance(data, str):
+            return data[:max_length] + "..." if len(data) > max_length else data
+        elif isinstance(data, dict):
+            # Convert to JSON and limit length
+            import json
+            try:
+                json_str = json.dumps(data, indent=2, ensure_ascii=False)
+                return json_str[:max_length] + "..." if len(json_str) > max_length else json_str
+            except:
+                return str(data)[:max_length]
+        else:
+            return str(data)[:max_length]
+
+    def _calculate_dict_depth(self, d: dict, current_depth: int = 0) -> int:
+        """Calculate the maximum depth of a nested dictionary."""
+        if not isinstance(d, dict) or not d:
+            return current_depth
+        return max(self._calculate_dict_depth(v, current_depth + 1)
+                  if isinstance(v, dict) else current_depth + 1 for v in d.values())
+
+    def _select_best_sample_for_ai(self, sample_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Select the most informative sample for AI structure generation."""
+        best_sample = None
+        best_score = 0
+
+        for domain, site_info in sample_data.items():
+            data = site_info.get('data', {})
+            size = site_info.get('size', 0)
+
+            # Score based on size, structure complexity, and content richness
+            score = size  # Base score from content size
+
+            if isinstance(data, dict):
+                score += len(data) * 10  # Bonus for dictionary structure
+                score += self._calculate_dict_depth(data) * 5  # Bonus for depth
+            elif isinstance(data, list):
+                score += len(data) * 5  # Bonus for list items
+
+            # Bonus for certain known-good sites
+            if domain in ['nytimes.com', 'bbc.com']:
+                score += 100
+
+            if score > best_score:
+                best_score = score
+                best_sample = {
+                    "domain": domain,
+                    "data": data,
+                    "score": score,
+                    "size": size
+                }
+
+        return best_sample
+
+    def _analyze_cross_site_patterns(self, sample_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Analyze patterns across multiple sites to identify common structures."""
+        patterns = {
+            "common_data_types": set(),
+            "site_specific_patterns": {},
+            "unified_approach_needed": len(sample_data) > 1
+        }
+
+        for domain, site_info in sample_data.items():
+            data = site_info.get('data', {})
+
+            # Track data types across sites
+            patterns["common_data_types"].add(type(data).__name__)
+
+            # Identify site-specific patterns
+            if 'nytimes.com' in domain:
+                patterns["site_specific_patterns"]["nyt"] = "Complex nested structures, rich metadata"
+            elif 'bbc.com' in domain:
+                patterns["site_specific_patterns"]["bbc"] = "Clean HTML structure, semantic markup"
+            elif 'reuters.com' in domain:
+                patterns["site_specific_patterns"]["reuters"] = "May have access restrictions, structured content"
+            elif 'cnn.com' in domain:
+                patterns["site_specific_patterns"]["cnn"] = "Dynamic content, JavaScript-heavy"
+
+        # Convert sets to lists for JSON serialization
+        patterns["common_data_types"] = list(patterns["common_data_types"])
+
+        return patterns
 
     def _create_fetch_spec(self, raw_text: str, urls: List[str],
                           structure: Dict[str, Any]) -> FetchSpec:
@@ -407,9 +557,9 @@ class AIOrchestrator:
             if sample_data and isinstance(sample_data, dict):
                 domains = list(sample_data.keys())
                 print(f"   Sample data from: {', '.join(domains)}")
-                # Use the largest sample for generation but include context about all
-                largest_sample = max(sample_data.values(), key=lambda x: x['size'])
-                enhanced_sample = largest_sample['data']
+                # Use the unified sample approach instead of just the largest
+                enhanced_sample = self._create_unified_sample_from_multiple_sites(sample_data)
+                print(f"   [IMPROVED] Using unified multi-site sample instead of single largest sample")
 
             # Generate Python code using AI with website-specific adaptations
             code = self.ai_client.generate_datafetch_implementation(
