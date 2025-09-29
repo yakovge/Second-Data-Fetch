@@ -512,12 +512,19 @@ class AIOrchestrator:
         # Use parser suggestions for format and method
         parsed = self.parser.parse(raw_text)
 
+        # Override method to use PLAYWRIGHT for search URLs (better extraction)
+        method = parsed.suggested_method
+        has_search_urls = any(('/search' in url or '?q=' in url or '?query=' in url) for url in urls)
+        if has_search_urls:
+            method = FetchMethod.PLAYWRIGHT
+            self.logger.info("Using PLAYWRIGHT method for search URLs")
+
         return FetchSpec(
             raw_text=raw_text,
             urls=urls,
             structure_definition=structure,
             expected_format=parsed.suggested_format,
-            method=parsed.suggested_method,
+            method=method,
             timeout=30,
             retry_count=3
         )

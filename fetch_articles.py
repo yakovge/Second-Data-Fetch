@@ -180,13 +180,20 @@ def _process_ai_orchestrator_results(query, result):
 
         for i, (score, article) in enumerate(articles_to_show, 1):
             if isinstance(article, dict):
-                print(f"{i}. {article.get('title', 'No title')} [Score: {score:.1f}]")
+                # Handle Unicode characters in title
+                title = article.get('title', 'No title')
+                title = title.encode('ascii', 'ignore').decode('ascii') if title else 'No title'
+                print(f"{i}. {title} [Score: {score:.1f}]")
                 if article.get('summary'):
-                    print(f"   Summary: {article['summary'][:100]}...")
+                    summary = article['summary'][:100]
+                    summary = summary.encode('ascii', 'ignore').decode('ascii') if summary else ''
+                    print(f"   Summary: {summary}...")
                 if article.get('url'):
                     print(f"   URL: {article['url']}")
             else:
-                print(f"{i}. {str(article)[:100]}... [Score: {score:.1f}]")
+                article_str = str(article)[:100]
+                article_str = article_str.encode('ascii', 'ignore').decode('ascii')
+                print(f"{i}. {article_str}... [Score: {score:.1f}]")
             print()
 
         return {
@@ -198,7 +205,9 @@ def _process_ai_orchestrator_results(query, result):
         }
     else:
         # Single result
-        print(f"Single result: {str(result.data)[:200]}...")
+        result_str = str(result.data)[:200]
+        result_str = result_str.encode('ascii', 'ignore').decode('ascii')
+        print(f"Single result: {result_str}...")
         return {
             'query': query,
             'total_articles': 1,
@@ -437,22 +446,35 @@ def _execute_static_collector_approach(query, spec):
             print()
             for i, (score, article) in enumerate(articles_to_show, 1):
                 if isinstance(article, dict):
-                    print(f"{i}. {article.get('title', 'No title')} [Score: {score:.1f}]")
+                    # Handle Unicode characters in title
+                    title = article.get('title', 'No title')
+                    title = title.encode('ascii', 'ignore').decode('ascii') if title else 'No title'
+                    print(f"{i}. {title} [Score: {score:.1f}]")
                     if article.get('summary'):
-                        print(f"   Summary: {article['summary'][:100]}...")
+                        summary = article['summary'][:100]
+                        summary = summary.encode('ascii', 'ignore').decode('ascii') if summary else ''
+                        print(f"   Summary: {summary}...")
                     if article.get('url'):
                         print(f"   URL: {article['url']}")
                 else:
-                    print(f"{i}. {str(article)[:100]}... [Score: {score:.1f}]")
+                    article_str = str(article)[:100]
+                    article_str = article_str.encode('ascii', 'ignore').decode('ascii')
+                    print(f"{i}. {article_str}... [Score: {score:.1f}]")
                 print()
         elif isinstance(result.data, dict):
             # Single article or structured data
-            print(f"1. {result.data.get('title', 'No title')}")
+            title = result.data.get('title', 'No title')
+            title = title.encode('ascii', 'ignore').decode('ascii') if title else 'No title'
+            print(f"1. {title}")
             if result.data.get('content'):
-                print(f"   Content: {str(result.data['content'])[:200]}...")
+                content = str(result.data['content'])[:200]
+                content = content.encode('ascii', 'ignore').decode('ascii')
+                print(f"   Content: {content}...")
         else:
             # Raw data
-            print(f"Raw data: {str(result.data)[:300]}...")
+            raw_data = str(result.data)[:300]
+            raw_data = raw_data.encode('ascii', 'ignore').decode('ascii')
+            print(f"Raw data: {raw_data}...")
     else:
         print("No articles found.")
 

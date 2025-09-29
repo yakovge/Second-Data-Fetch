@@ -579,9 +579,10 @@ class BrowserClient(DataFetch):
             }
         """)
         
-        # Check if this is a section/listing page (prioritize article lists over individual articles)
+        # Check if this is a section/listing/search page (prioritize article lists over individual articles)
         if ('section/' in page.url or 'category/' in page.url or 'topic/' in page.url or
-            any(domain in page.url for domain in ['nytimes.com/section', 'bbc.com/news', 'reuters.com/'])):
+            '/search' in page.url or '?q=' in page.url or '?query=' in page.url or
+            any(domain in page.url for domain in ['nytimes.com/section', 'bbc.com/news', 'reuters.com/', 'cnn.com/politics', 'cnn.com/world', 'cnn.com/us'])):
             return self._extract_article_links_sync(page)
 
         # If we have structured data for individual articles, return it
@@ -634,9 +635,10 @@ class BrowserClient(DataFetch):
             }
         """)
         
-        # Check if this is a section/listing page (prioritize article lists over individual articles)
+        # Check if this is a section/listing/search page (prioritize article lists over individual articles)
         if ('section/' in page.url or 'category/' in page.url or 'topic/' in page.url or
-            any(domain in page.url for domain in ['nytimes.com/section', 'bbc.com/news', 'reuters.com/'])):
+            '/search' in page.url or '?q=' in page.url or '?query=' in page.url or
+            any(domain in page.url for domain in ['nytimes.com/section', 'bbc.com/news', 'reuters.com/', 'cnn.com/politics', 'cnn.com/world', 'cnn.com/us'])):
             return await self._extract_article_links_async(page)
 
         # If we have structured data for individual articles, return it
@@ -672,7 +674,18 @@ class BrowserClient(DataFetch):
                     pageHeight: document.body.scrollHeight
                 };
 
-                // Enhanced article validation function
+                // Get current page URL and search query for content filtering
+                const currentUrl = window.location.href.toLowerCase();
+                const isSearchPage = currentUrl.includes('/search') || currentUrl.includes('?q=') || currentUrl.includes('?query=');
+
+                // Extract search query for content filtering
+                let searchQuery = '';
+                if (isSearchPage) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    searchQuery = (urlParams.get('q') || urlParams.get('query') || '').toLowerCase();
+                }
+
+                // Enhanced article validation function with content filtering
                 function isValidArticleLink(href, text) {
                     if (!href || !text || text.length < 10) return false;
 
@@ -689,6 +702,17 @@ class BrowserClient(DataFetch):
 
                     for (const pattern of excludePatterns) {
                         if (url.includes(pattern)) return false;
+                    }
+
+                    // Content filtering: if we have a search query, check if title is relevant
+                    if (searchQuery && searchQuery.length > 2) {
+                        const searchTerms = searchQuery.split(' ').filter(term => term.length > 2);
+                        const titleRelevant = searchTerms.some(term => title.includes(term));
+                        if (!titleRelevant) {
+                            // Skip articles that don't mention the search terms
+                            console.log(`Skipping irrelevant article: ${title}`);
+                            return false;
+                        }
                     }
 
                     // Include if it has date patterns (2024/2025)
@@ -728,8 +752,27 @@ class BrowserClient(DataFetch):
                     return false;
                 }
 
-                // Enhanced multi-site selectors for article links
+                // Enhanced multi-site selectors for article links (search result priority)
                 const articleSelectors = [
+                    // Search result specific patterns (priority for search pages)
+                    '.search-result a', '.search-results a',
+                    '.search-item a', '.search-entry a',
+                    '.result a', '.results a',
+
+                    // BBC search result patterns
+                    '.ssrcss-1pie6c4-PromoContent a',  // BBC search results
+                    '.ssrcss-atcud-PromoLink a',       // BBC promo links
+                    '.gel-layout__item a',             // BBC layout items
+
+                    // CNN search result patterns
+                    '.cnn-search__result a',           // CNN search results
+                    '.cnn-search__result-headline a', // CNN search headlines
+                    '.zn-body__read-all a',           // CNN read all links
+
+                    // Guardian search patterns
+                    '.fc-item__content a',            // Guardian front content
+                    '.fc-sublink a',                  // Guardian sublinks
+
                     // Generic article patterns
                     'article a',
                     'h1 a', 'h2 a', 'h3 a',
@@ -893,7 +936,18 @@ class BrowserClient(DataFetch):
                     pageHeight: document.body.scrollHeight
                 };
 
-                // Enhanced article validation function (same as sync version)
+                // Get current page URL and search query for content filtering
+                const currentUrl = window.location.href.toLowerCase();
+                const isSearchPage = currentUrl.includes('/search') || currentUrl.includes('?q=') || currentUrl.includes('?query=');
+
+                // Extract search query for content filtering
+                let searchQuery = '';
+                if (isSearchPage) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    searchQuery = (urlParams.get('q') || urlParams.get('query') || '').toLowerCase();
+                }
+
+                // Enhanced article validation function with content filtering
                 function isValidArticleLink(href, text) {
                     if (!href || !text || text.length < 10) return false;
 
@@ -910,6 +964,17 @@ class BrowserClient(DataFetch):
 
                     for (const pattern of excludePatterns) {
                         if (url.includes(pattern)) return false;
+                    }
+
+                    // Content filtering: if we have a search query, check if title is relevant
+                    if (searchQuery && searchQuery.length > 2) {
+                        const searchTerms = searchQuery.split(' ').filter(term => term.length > 2);
+                        const titleRelevant = searchTerms.some(term => title.includes(term));
+                        if (!titleRelevant) {
+                            // Skip articles that don't mention the search terms
+                            console.log(`Skipping irrelevant article: ${title}`);
+                            return false;
+                        }
                     }
 
                     // Include if it has date patterns (2024/2025)
@@ -949,8 +1014,27 @@ class BrowserClient(DataFetch):
                     return false;
                 }
 
-                // Enhanced multi-site selectors for article links
+                // Enhanced multi-site selectors for article links (search result priority)
                 const articleSelectors = [
+                    // Search result specific patterns (priority for search pages)
+                    '.search-result a', '.search-results a',
+                    '.search-item a', '.search-entry a',
+                    '.result a', '.results a',
+
+                    // BBC search result patterns
+                    '.ssrcss-1pie6c4-PromoContent a',  // BBC search results
+                    '.ssrcss-atcud-PromoLink a',       // BBC promo links
+                    '.gel-layout__item a',             // BBC layout items
+
+                    // CNN search result patterns
+                    '.cnn-search__result a',           // CNN search results
+                    '.cnn-search__result-headline a', // CNN search headlines
+                    '.zn-body__read-all a',           // CNN read all links
+
+                    // Guardian search patterns
+                    '.fc-item__content a',            // Guardian front content
+                    '.fc-sublink a',                  // Guardian sublinks
+
                     // Generic article patterns
                     'article a',
                     'h1 a', 'h2 a', 'h3 a',
