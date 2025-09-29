@@ -654,14 +654,24 @@ class BrowserClient(DataFetch):
                     window.scrollTo(0, document.body.scrollHeight);
                     scrollMetrics.totalScrolls++;
 
-                    // Wait for potential new content to load
+                    // Wait for potential new content to load (optimized for sync)
                     let waited = 0;
-                    while (waited < 2000) { // Wait up to 2 seconds
-                        if (document.body.scrollHeight > lastHeight) break;
-                        // Simple busy wait (not ideal but works in browser context)
+                    const checkInterval = 50; // Check every 50ms for faster detection
+                    const maxWait = 600; // Reduced from 2000ms to 600ms
+
+                    while (waited < maxWait) {
+                        if (document.body.scrollHeight > lastHeight) {
+                            console.log(`✅ Content loaded after ${waited}ms`);
+                            break;
+                        }
+                        // Efficient wait - reduced interval for faster detection
                         const start = Date.now();
-                        while (Date.now() - start < 100) {}
-                        waited += 100;
+                        while (Date.now() - start < checkInterval) {}
+                        waited += checkInterval;
+                    }
+
+                    if (waited >= maxWait) {
+                        console.log(`⏱️  Timeout after ${maxWait}ms - no new content detected`);
                     }
 
                     lastHeight = document.body.scrollHeight;
@@ -782,16 +792,24 @@ class BrowserClient(DataFetch):
                     window.scrollTo(0, document.body.scrollHeight);
                     scrollMetrics.totalScrolls++;
 
-                    // Wait for potential new content to load (async version)
+                    // Wait for potential new content to load (optimized async version)
                     await new Promise(resolve => {
                         let waited = 0;
-                        const checkInterval = setInterval(() => {
-                            waited += 100;
-                            if (document.body.scrollHeight > lastHeight || waited >= 2000) {
-                                clearInterval(checkInterval);
+                        const checkInterval = 50; // Check every 50ms for faster detection
+                        const maxWait = 600; // Reduced from 2000ms to 600ms
+
+                        const interval = setInterval(() => {
+                            waited += checkInterval;
+                            if (document.body.scrollHeight > lastHeight) {
+                                console.log(`✅ Content loaded after ${waited}ms`);
+                                clearInterval(interval);
+                                resolve();
+                            } else if (waited >= maxWait) {
+                                console.log(`⏱️  Timeout after ${maxWait}ms - no new content detected`);
+                                clearInterval(interval);
                                 resolve();
                             }
-                        }, 100);
+                        }, checkInterval);
                     });
 
                     lastHeight = document.body.scrollHeight;
