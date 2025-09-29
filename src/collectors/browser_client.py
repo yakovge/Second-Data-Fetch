@@ -571,10 +571,22 @@ class BrowserClient(DataFetch):
         return await self._extract_article_content_async(page)
     
     def _extract_article_links_sync(self, page: SyncPage) -> List[Dict[str, Any]]:
-        """Extract article links from section/listing pages (sync)."""
+        """Extract article links from section/listing pages with intelligent scrolling."""
+        self.logger.info("Starting article extraction with progressive scrolling...")
+
+        # First, get initial articles count
+        initial_count = page.evaluate("() => document.querySelectorAll('a[href*=\"/2024/\"], a[href*=\"/2025/\"]').length")
+        self.logger.info(f"Initial articles found on page load: {initial_count}")
+
         return page.evaluate("""
             () => {
                 const articles = [];
+                const scrollMetrics = {
+                    totalScrolls: 0,
+                    articlesBeforeScroll: 0,
+                    articlesAfterScroll: 0,
+                    pageHeight: document.body.scrollHeight
+                };
 
                 // NYT-specific selectors for article links
                 const articleSelectors = [
@@ -589,49 +601,120 @@ class BrowserClient(DataFetch):
                     '[data-testid="headline"] a'
                 ];
 
-                const foundLinks = new Set();
+                function extractCurrentArticles() {
+                    const foundLinks = new Set();
+                    const currentArticles = [];
 
-                for (let selector of articleSelectors) {
-                    const links = document.querySelectorAll(selector);
+                    for (let selector of articleSelectors) {
+                        const links = document.querySelectorAll(selector);
 
-                    for (let link of links) {
-                        const href = link.href;
-                        const text = link.textContent?.trim();
+                        for (let link of links) {
+                            const href = link.href;
+                            const text = link.textContent?.trim();
 
-                        // Filter for actual article URLs
-                        if (href && text && (href.includes('/2024/') || href.includes('/2025/'))) {
-                            if (!foundLinks.has(href) && text.length > 10) {
-                                foundLinks.add(href);
+                            // Filter for actual article URLs
+                            if (href && text && (href.includes('/2024/') || href.includes('/2025/'))) {
+                                if (!foundLinks.has(href) && text.length > 10) {
+                                    foundLinks.add(href);
 
-                                // Get additional info from parent elements
-                                let summary = '';
-                                const parent = link.closest('article, .story-wrapper, .css-1l4spti');
-                                if (parent) {
-                                    const summaryEl = parent.querySelector('p, .summary, .css-1pga48a');
-                                    if (summaryEl) {
-                                        summary = summaryEl.textContent?.trim() || '';
+                                    // Get additional info from parent elements
+                                    let summary = '';
+                                    const parent = link.closest('article, .story-wrapper, .css-1l4spti');
+                                    if (parent) {
+                                        const summaryEl = parent.querySelector('p, .summary, .css-1pga48a');
+                                        if (summaryEl) {
+                                            summary = summaryEl.textContent?.trim() || '';
+                                        }
                                     }
-                                }
 
-                                articles.push({
-                                    title: text,
-                                    url: href,
-                                    summary: summary.substring(0, 200)
-                                });
+                                    currentArticles.push({
+                                        title: text,
+                                        url: href,
+                                        summary: summary.substring(0, 200)
+                                    });
+                                }
                             }
                         }
                     }
+                    return currentArticles;
                 }
 
-                return articles.slice(0, 10);  // Return top 10 articles
+                // Extract initial articles
+                let currentArticles = extractCurrentArticles();
+                scrollMetrics.articlesBeforeScroll = currentArticles.length;
+                console.log(`📄 Initial extraction: ${currentArticles.length} articles found`);
+
+                // Progressive scrolling to load more content
+                let lastHeight = document.body.scrollHeight;
+                let scrollAttempts = 0;
+                const maxScrolls = 5; // Limit scrolling to prevent infinite loops
+
+                while (scrollAttempts < maxScrolls && currentArticles.length < 50) {
+                    // Scroll to bottom
+                    window.scrollTo(0, document.body.scrollHeight);
+                    scrollMetrics.totalScrolls++;
+
+                    // Wait for potential new content to load
+                    let waited = 0;
+                    while (waited < 2000) { // Wait up to 2 seconds
+                        if (document.body.scrollHeight > lastHeight) break;
+                        // Simple busy wait (not ideal but works in browser context)
+                        const start = Date.now();
+                        while (Date.now() - start < 100) {}
+                        waited += 100;
+                    }
+
+                    lastHeight = document.body.scrollHeight;
+
+                    // Extract articles again
+                    const newArticles = extractCurrentArticles();
+                    console.log(`🔄 Scroll ${scrollAttempts + 1}: Found ${newArticles.length} total articles (was ${currentArticles.length})`);
+
+                    // If no new articles found, break
+                    if (newArticles.length <= currentArticles.length) {
+                        console.log(`⏹️  No new articles after scroll ${scrollAttempts + 1}, stopping`);
+                        break;
+                    }
+
+                    currentArticles = newArticles;
+                    scrollAttempts++;
+                }
+
+                scrollMetrics.articlesAfterScroll = currentArticles.length;
+                scrollMetrics.finalPageHeight = document.body.scrollHeight;
+
+                console.log(`📊 Scrolling Summary:`);
+                console.log(`   • Total scrolls performed: ${scrollMetrics.totalScrolls}`);
+                console.log(`   • Articles before scrolling: ${scrollMetrics.articlesBeforeScroll}`);
+                console.log(`   • Articles after scrolling: ${scrollMetrics.articlesAfterScroll}`);
+                console.log(`   • Additional articles found: ${scrollMetrics.articlesAfterScroll - scrollMetrics.articlesBeforeScroll}`);
+                console.log(`   • Page height grew: ${scrollMetrics.finalPageHeight - scrollMetrics.pageHeight}px`);
+
+                // Return articles with scroll metrics
+                const result = currentArticles.slice(0, 20); // Return top 20 articles
+                result._scrollMetrics = scrollMetrics;
+                return result;
             }
         """)
 
     async def _extract_article_links_async(self, page: Page) -> List[Dict[str, Any]]:
-        """Extract article links from section/listing pages (async)."""
+        """Extract article links from section/listing pages with intelligent scrolling (async)."""
+        self.logger.info("Starting async article extraction with progressive scrolling...")
+
+        # First, get initial articles count
+        initial_count = await page.evaluate("() => document.querySelectorAll('a[href*=\"/2024/\"], a[href*=\"/2025/\"]').length")
+        self.logger.info(f"Initial articles found on page load: {initial_count}")
+
+        # Use the same scrolling logic as sync version
         return await page.evaluate("""
-            () => {
+            async () => {
                 const articles = [];
+                const scrollMetrics = {
+                    totalScrolls: 0,
+                    articlesBeforeScroll: 0,
+                    articlesAfterScroll: 0,
+                    pageHeight: document.body.scrollHeight
+                };
 
                 // NYT-specific selectors for article links
                 const articleSelectors = [
@@ -646,41 +729,101 @@ class BrowserClient(DataFetch):
                     '[data-testid="headline"] a'
                 ];
 
-                const foundLinks = new Set();
+                function extractCurrentArticles() {
+                    const foundLinks = new Set();
+                    const currentArticles = [];
 
-                for (let selector of articleSelectors) {
-                    const links = document.querySelectorAll(selector);
+                    for (let selector of articleSelectors) {
+                        const links = document.querySelectorAll(selector);
 
-                    for (let link of links) {
-                        const href = link.href;
-                        const text = link.textContent?.trim();
+                        for (let link of links) {
+                            const href = link.href;
+                            const text = link.textContent?.trim();
 
-                        // Filter for actual article URLs
-                        if (href && text && (href.includes('/2024/') || href.includes('/2025/'))) {
-                            if (!foundLinks.has(href) && text.length > 10) {
-                                foundLinks.add(href);
+                            // Filter for actual article URLs
+                            if (href && text && (href.includes('/2024/') || href.includes('/2025/'))) {
+                                if (!foundLinks.has(href) && text.length > 10) {
+                                    foundLinks.add(href);
 
-                                // Get additional info from parent elements
-                                let summary = '';
-                                const parent = link.closest('article, .story-wrapper, .css-1l4spti');
-                                if (parent) {
-                                    const summaryEl = parent.querySelector('p, .summary, .css-1pga48a');
-                                    if (summaryEl) {
-                                        summary = summaryEl.textContent?.trim() || '';
+                                    // Get additional info from parent elements
+                                    let summary = '';
+                                    const parent = link.closest('article, .story-wrapper, .css-1l4spti');
+                                    if (parent) {
+                                        const summaryEl = parent.querySelector('p, .summary, .css-1pga48a');
+                                        if (summaryEl) {
+                                            summary = summaryEl.textContent?.trim() || '';
+                                        }
                                     }
-                                }
 
-                                articles.push({
-                                    title: text,
-                                    url: href,
-                                    summary: summary.substring(0, 200)
-                                });
+                                    currentArticles.push({
+                                        title: text,
+                                        url: href,
+                                        summary: summary.substring(0, 200)
+                                    });
+                                }
                             }
                         }
                     }
+                    return currentArticles;
                 }
 
-                return articles.slice(0, 10);  // Return top 10 articles
+                // Extract initial articles
+                let currentArticles = extractCurrentArticles();
+                scrollMetrics.articlesBeforeScroll = currentArticles.length;
+                console.log(`📄 Initial extraction: ${currentArticles.length} articles found`);
+
+                // Progressive scrolling to load more content
+                let lastHeight = document.body.scrollHeight;
+                let scrollAttempts = 0;
+                const maxScrolls = 5; // Limit scrolling to prevent infinite loops
+
+                while (scrollAttempts < maxScrolls && currentArticles.length < 50) {
+                    // Scroll to bottom
+                    window.scrollTo(0, document.body.scrollHeight);
+                    scrollMetrics.totalScrolls++;
+
+                    // Wait for potential new content to load (async version)
+                    await new Promise(resolve => {
+                        let waited = 0;
+                        const checkInterval = setInterval(() => {
+                            waited += 100;
+                            if (document.body.scrollHeight > lastHeight || waited >= 2000) {
+                                clearInterval(checkInterval);
+                                resolve();
+                            }
+                        }, 100);
+                    });
+
+                    lastHeight = document.body.scrollHeight;
+
+                    // Extract articles again
+                    const newArticles = extractCurrentArticles();
+                    console.log(`🔄 Scroll ${scrollAttempts + 1}: Found ${newArticles.length} total articles (was ${currentArticles.length})`);
+
+                    // If no new articles found, break
+                    if (newArticles.length <= currentArticles.length) {
+                        console.log(`⏹️  No new articles after scroll ${scrollAttempts + 1}, stopping`);
+                        break;
+                    }
+
+                    currentArticles = newArticles;
+                    scrollAttempts++;
+                }
+
+                scrollMetrics.articlesAfterScroll = currentArticles.length;
+                scrollMetrics.finalPageHeight = document.body.scrollHeight;
+
+                console.log(`📊 Scrolling Summary:`);
+                console.log(`   • Total scrolls performed: ${scrollMetrics.totalScrolls}`);
+                console.log(`   • Articles before scrolling: ${scrollMetrics.articlesBeforeScroll}`);
+                console.log(`   • Articles after scrolling: ${scrollMetrics.articlesAfterScroll}`);
+                console.log(`   • Additional articles found: ${scrollMetrics.articlesAfterScroll - scrollMetrics.articlesBeforeScroll}`);
+                console.log(`   • Page height grew: ${scrollMetrics.finalPageHeight - scrollMetrics.pageHeight}px`);
+
+                // Return articles with scroll metrics
+                const result = currentArticles.slice(0, 20); // Return top 20 articles
+                result._scrollMetrics = scrollMetrics;
+                return result;
             }
         """)
 
