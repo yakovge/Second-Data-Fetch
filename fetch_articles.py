@@ -20,6 +20,7 @@ from src.collectors.browser_client import BrowserClient
 from src.core.datafetch import FetchSpec, FetchMethod
 from src.core.ai_orchestrator import AIOrchestrator
 import re
+import time
 
 
 def score_article_relevance(article, query_keywords):
@@ -97,34 +98,47 @@ def fetch_articles(query):
     Returns:
         dict: Results containing articles and metadata
     """
+    overall_start_time = time.time()
     print(f"Processing query: '{query}'")
     print("-" * 50)
 
     # Try AI orchestrator first (dynamic approach)
+    ai_start_time = time.time()
     try:
-        print("AI: Attempting dynamic implementation generation...")
+        print("[AI] METHOD: AI Orchestrator (Dynamic Implementation Generation)")
+        print("AI: Attempting adaptive website detection and dynamic implementation...")
         orchestrator = AIOrchestrator()
         result = orchestrator.orchestrate_fetch(query)
+        ai_execution_time = time.time() - ai_start_time
 
         if result and not result.error:
-            print("SUCCESS: AI orchestrator completed")
-            print(f"  Status: Success")
+            print("[SUCCESS] AI orchestrator completed")
+            print(f"  Method Used: AI Orchestrator -> Dynamic DataFetch Implementation")
+            print(f"  AI Generation Time: {ai_execution_time:.2f}s")
+            print(f"  Data Fetch Time: {result.execution_time:.2f}s")
+            print(f"  Total AI Path Time: {ai_execution_time + result.execution_time:.2f}s")
             print(f"  Items found: {len(result.data) if isinstance(result.data, (list, tuple)) else 1}")
-            print(f"  Fetch time: {result.execution_time:.2f}s")
             print()
 
             # Process results with existing ranking system
-            return _process_ai_orchestrator_results(query, result)
+            processed_result = _process_ai_orchestrator_results(query, result)
+            processed_result['method_used'] = 'AI_Orchestrator'
+            processed_result['ai_generation_time'] = ai_execution_time
+            processed_result['total_time'] = time.time() - overall_start_time
+            return processed_result
         else:
-            print(f"AI: Orchestrator returned error: {result.error if result else 'No result'}")
+            ai_execution_time = time.time() - ai_start_time
+            print(f"[FAILED] AI: Orchestrator returned error after {ai_execution_time:.2f}s: {result.error if result else 'No result'}")
             raise Exception("AI orchestrator failed")
 
     except Exception as e:
-        print(f"AI: Dynamic approach failed: {e}")
-        print("AI: Falling back to static collector approach...")
+        ai_execution_time = time.time() - ai_start_time
+        print(f"[FAILED] AI: Dynamic approach failed after {ai_execution_time:.2f}s: {e}")
+        print("[FALLBACK] Switching to Static Collector approach...")
         print()
 
-        return _fetch_articles_fallback(query)
+        fallback_result = _fetch_articles_fallback(query, overall_start_time, ai_execution_time)
+        return fallback_result
 
 
 def _process_ai_orchestrator_results(query, result):
@@ -192,14 +206,38 @@ def _process_ai_orchestrator_results(query, result):
         }
 
 
-def _fetch_articles_fallback(query):
-    """Fallback to original static collector approach."""
+def _fetch_articles_fallback(query, overall_start_time, ai_time_spent):
+    """Fallback to original static collector approach with detailed logging."""
+    fallback_start_time = time.time()
+    print("[STATIC] METHOD: Static Collectors (HTTPClient/BrowserClient)")
+    print("Fallback: Using pre-built collector implementations...")
+
     # Step 1: Parse raw text using RawTextParser (CLAUDE.md strategy)
     parser = RawTextParser()
     spec = parser.parse(query)
 
     # Original static collector logic preserved as fallback
-    return _execute_static_collector_approach(query, spec)
+    result = _execute_static_collector_approach(query, spec)
+
+    # Add timing and method information
+    fallback_execution_time = time.time() - fallback_start_time
+    total_time = time.time() - overall_start_time
+
+    print("[SUCCESS] Static collector approach completed")
+    print(f"  Method Used: Static Collectors -> {'BrowserClient' if spec.suggested_method == FetchMethod.PLAYWRIGHT else 'HTTPClient'}")
+    print(f"  AI Attempt Time: {ai_time_spent:.2f}s (failed)")
+    print(f"  Collector Execution Time: {fallback_execution_time:.2f}s")
+    print(f"  Total Fallback Path Time: {total_time:.2f}s")
+    print()
+
+    # Enhance result with method information
+    result['method_used'] = 'Static_Collectors'
+    result['collector_type'] = 'BrowserClient' if spec.suggested_method == FetchMethod.PLAYWRIGHT else 'HTTPClient'
+    result['ai_attempt_time'] = ai_time_spent
+    result['collector_execution_time'] = fallback_execution_time
+    result['total_time'] = total_time
+
+    return result
 
 
 def _execute_static_collector_approach(query, spec):
@@ -431,19 +469,47 @@ def main():
     try:
         results = fetch_articles(query)
 
-        print("SUMMARY:")
-        print(f"  Query: '{results['query']}'")
-        print(f"  Found: {results['total_articles']} articles")
-        print(f"  Time: {results['fetch_time']:.2f}s")
-        print(f"  Status: {results['status']}")
+        # Enhanced summary with method and timing details
+        print("=" * 60)
+        print("[SUMMARY] EXECUTION SUMMARY")
+        print("=" * 60)
+        print(f"Query: '{results['query']}'")
+        print(f"Method Used: {results.get('method_used', 'Unknown')}")
+
+        if results.get('method_used') == 'AI_Orchestrator':
+            print(f"  [AI] Generation Time: {results.get('ai_generation_time', 0):.2f}s")
+            print(f"  [DATA] Fetch Time: {results['fetch_time']:.2f}s")
+            print(f"  [TOTAL] Time: {results.get('total_time', 0):.2f}s")
+        elif results.get('method_used') == 'Static_Collectors':
+            print(f"  Collector Type: {results.get('collector_type', 'Unknown')}")
+            print(f"  [FAILED] AI Attempt Time: {results.get('ai_attempt_time', 0):.2f}s")
+            print(f"  [STATIC] Collector Time: {results.get('collector_execution_time', 0):.2f}s")
+            print(f"  [TOTAL] Time: {results.get('total_time', 0):.2f}s")
+        else:
+            print(f"  [TOTAL] Time: {results['fetch_time']:.2f}s")
+
+        print(f"Articles Found: {results['total_articles']}")
+        print(f"Status: {results['status']}")
+
+        # Performance indicator
+        if results.get('method_used') == 'AI_Orchestrator':
+            print("[SUCCESS] Dynamic AI implementation worked!")
+        elif results.get('method_used') == 'Static_Collectors':
+            print("[FALLBACK] Used static collectors (AI generation failed)")
+
+        print("=" * 60)
 
         return results
 
     except Exception as e:
-        print(f"ERROR: {e}")
+        print("=" * 60)
+        print("[ERROR] ERROR SUMMARY")
+        print("=" * 60)
+        print(f"Error: {e}")
         print("Make sure your environment is set up correctly:")
         print("  venv\\Scripts\\activate")
         print("  pip install -r requirements.txt")
+        print("=" * 60)
         return None
 
 
