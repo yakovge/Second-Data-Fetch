@@ -264,13 +264,13 @@ def fetch_articles(query):
             scored_articles.sort(key=lambda x: x[0], reverse=True)
 
             # Filter for only relevant articles (score > 0) and take top 10
-            # Special rule: exclude 1.0 scores unless they're in top 3 positions
+            # Special rule: exclude scores <= 1.0 unless they're in top 3 positions
             filtered_articles = []
             for i, (score, article) in enumerate(scored_articles):
                 if score > 0:
-                    # Allow 1.0 scores only if they're in top 3 positions
-                    if score == 1.0 and i >= 3:
-                        continue  # Skip 1.0 scores outside top 3
+                    # Allow scores <= 1.0 only if they're in top 3 positions
+                    if score <= 1.0 and i >= 3:
+                        continue  # Skip low scores (<=1.0) outside top 3
                     filtered_articles.append((score, article))
 
             # If we have more than 10 filtered articles, take the best 10
