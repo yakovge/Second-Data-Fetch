@@ -54,8 +54,8 @@ class TestHTTPClient:
         
         client = HTTPClient(news_spec)
         
-        # Should use news-specific headers
-        assert "NewsBot" in client.config.headers['User-Agent']
+        # Should use news-specific headers (realistic browser headers)
+        assert "Mozilla" in client.config.headers['User-Agent']
         assert client.config.headers['Accept-Language'] == 'en-US,en;q=0.9'
     
     def test_config_creation_custom_headers(self):

@@ -179,9 +179,12 @@ class TechFetch(DataFetch):
 
                 assert result == mock_class
 
-                # Verify AI was called with largest sample (NYT has more characters)
+                # Verify AI was called with unified multi-site sample structure
                 call_args = mock_generate.call_args
-                assert call_args[0][1] == sample_data["nytimes.com"]["data"]
+                sample_arg = call_args[0][1]
+                assert isinstance(sample_arg, dict)
+                assert "multi_site_analysis" in sample_arg
+                assert sample_arg["multi_site_analysis"]["sites_analyzed"] == ["nytimes.com", "reuters.com"]
 
     @pytest.mark.slow
     def test_complete_workflow_with_mocked_responses(self):
@@ -341,7 +344,7 @@ class ClimateFetch(DataFetch):
 
             # Should get results from successful URLs
             assert result is not None
-            assert len(result) == 2  # Two successful samples
+            assert len(result) == 1  # Consolidated by domain (all httpbin.org)
 
 
 if __name__ == "__main__":
