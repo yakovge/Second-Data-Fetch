@@ -107,9 +107,11 @@ def fetch_articles(query):
     try:
         print("[AI] METHOD: AI Orchestrator (Dynamic Implementation Generation)")
         print("AI: Attempting adaptive website detection and dynamic implementation...")
+        print("=" * 60)
         orchestrator = AIOrchestrator()
         result = orchestrator.orchestrate_fetch(query)
         ai_execution_time = time.time() - ai_start_time
+        print("=" * 60)
 
         if result and not result.error:
             print("[SUCCESS] AI orchestrator completed")
@@ -209,6 +211,7 @@ def _process_ai_orchestrator_results(query, result):
 def _fetch_articles_fallback(query, overall_start_time, ai_time_spent):
     """Fallback to original static collector approach with detailed logging."""
     fallback_start_time = time.time()
+    print("=" * 60)
     print("[STATIC] METHOD: Static Collectors (HTTPClient/BrowserClient)")
     print("Fallback: Using pre-built collector implementations...")
 
@@ -222,6 +225,7 @@ def _fetch_articles_fallback(query, overall_start_time, ai_time_spent):
     # Add timing and method information
     fallback_execution_time = time.time() - fallback_start_time
     total_time = time.time() - overall_start_time
+    print("=" * 60)
 
     print("[SUCCESS] Static collector approach completed")
     print(f"  Method Used: Static Collectors -> {'BrowserClient' if spec.suggested_method == FetchMethod.PLAYWRIGHT else 'HTTPClient'}")
@@ -242,8 +246,13 @@ def _fetch_articles_fallback(query, overall_start_time, ai_time_spent):
 
 def _execute_static_collector_approach(query, spec):
     """Execute the original static collector approach with existing logic."""
-    print("SUCCESS: Parsed specification:")
-    print(f"  URL: {spec.extracted_urls[0] if spec.extracted_urls else 'No URL extracted'}")
+    print("[STATIC PARSING] Initial specification:")
+    if spec.extracted_urls:
+        print(f"[STATIC PARSING] Found {len(spec.extracted_urls)} URLs from parser:")
+        for i, url in enumerate(spec.extracted_urls, 1):
+            print(f"  {i}. {url}")
+    else:
+        print("[STATIC PARSING] No URLs extracted from parser")
     print(f"  Format: {spec.suggested_format}")
     print(f"  Method: {spec.suggested_method}")
     print(f"  Confidence: {spec.confidence_score:.2f}")
@@ -251,7 +260,7 @@ def _execute_static_collector_approach(query, spec):
     # Step 2: Use AI for URL discovery if no URLs found (CLAUDE.md strategy)
     # Currently using Claude 3 Haiku for fast, efficient AI processing
     if not spec.extracted_urls or spec.confidence_score < 0.7:
-        print("AI: Using Claude Haiku for URL and structure discovery...")
+        print("[STATIC AI] Using Claude Haiku for URL and structure discovery...")
         try:
             from src.ai.claude_client import ClaudeClient
 
@@ -260,7 +269,9 @@ def _execute_static_collector_approach(query, spec):
             # Generate URLs using AI
             ai_urls = ai_client.generate_urls_from_text(query)
             if ai_urls:
-                print(f"  AI discovered URLs: {ai_urls}")
+                print(f"[STATIC AI] AI discovered {len(ai_urls)} URLs:")
+                for i, url in enumerate(ai_urls, 1):
+                    print(f"  {i}. {url}")
 
                 # Prioritize regular HTML URLs first, then API endpoints as fallback
                 prioritized_urls = []
@@ -273,7 +284,7 @@ def _execute_static_collector_approach(query, spec):
                         if nyt_api_key and 'api.nytimes.com' in url:
                             separator = '&' if '?' in url else '?'
                             url = f"{url}{separator}api-key={nyt_api_key}"
-                            print(f"  Added API key to: {url.split('api-key=')[0]}api-key=***")
+                            print(f"[STATIC AI] Added API key to: {url.split('api-key=')[0]}api-key=***")
                         # API endpoints go to separate list
                         api_urls.append(url)
                     else:
@@ -283,14 +294,17 @@ def _execute_static_collector_approach(query, spec):
                 # Combine: regular URLs first, then API URLs as fallback
                 final_urls = prioritized_urls + api_urls
                 spec.extracted_urls = final_urls
+                print(f"[STATIC AI] Final prioritized URL list ({len(final_urls)} URLs):")
+                for i, url in enumerate(final_urls, 1):
+                    print(f"  {i}. {url}")
                 # Update confidence score
                 spec.confidence_score = min(spec.confidence_score + 0.3, 1.0)
             else:
-                print("  AI could not discover relevant URLs")
+                print("[STATIC AI] AI could not discover relevant URLs")
 
         except Exception as e:
-            print(f"  AI discovery failed: {e}")
-            print("  Falling back to rule-based parsing")
+            print(f"[STATIC AI] AI discovery failed: {e}")
+            print("[STATIC AI] Falling back to rule-based parsing")
 
     print()
 

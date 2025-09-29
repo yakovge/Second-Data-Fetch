@@ -12,7 +12,12 @@
       "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about climate from BBC\")",
       "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about climate\")",
       "Bash(find:*)",
-      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about technology from TechCrunch\")"
+      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about technology from TechCrunch\")",
+      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about russia\")",
+      "Bash(dir implementations)",
+      "Bash(dir:*)",
+      "Bash(tree:*)",
+      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about technology from Reuters\")"
     ],
     "deny": [],
     "ask": []
