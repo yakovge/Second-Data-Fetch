@@ -168,9 +168,17 @@ class AIOrchestrator:
             if site_name in text_lower or any(domain in text_lower for domain in domains):
                 detected_sites.extend(domains)
 
-        # If no specific sites mentioned, use diverse multi-site approach
+        # If no specific sites mentioned, use diverse multi-site approach with rotation
         if not detected_sites:
-            return ['nytimes.com', 'bbc.com', 'reuters.com']  # Diverse defaults
+            # Rotate the order to avoid NYT bias - use different starting points
+            import hashlib
+            query_hash = int(hashlib.md5(raw_text.encode()).hexdigest()[:8], 16)
+            site_lists = [
+                ['bbc.com', 'reuters.com', 'nytimes.com'],
+                ['reuters.com', 'nytimes.com', 'bbc.com'],
+                ['nytimes.com', 'bbc.com', 'reuters.com']
+            ]
+            return site_lists[query_hash % len(site_lists)]
 
         return detected_sites
 

@@ -497,8 +497,9 @@ class BrowserClient(DataFetch):
             }
         """)
         
-        # Check if this is a section/listing page (like NYT sections) - prioritize this over structured data
-        if 'section/' in page.url or 'category/' in page.url or 'nytimes.com/section' in page.url:
+        # Check if this is a section/listing page (prioritize article lists over individual articles)
+        if ('section/' in page.url or 'category/' in page.url or 'topic/' in page.url or
+            any(domain in page.url for domain in ['nytimes.com/section', 'bbc.com/news', 'reuters.com/'])):
             return self._extract_article_links_sync(page)
 
         # If we have structured data for individual articles, return it
@@ -551,8 +552,9 @@ class BrowserClient(DataFetch):
             }
         """)
         
-        # Check if this is a section/listing page (like NYT sections) - prioritize this over structured data
-        if 'section/' in page.url or 'category/' in page.url or 'nytimes.com/section' in page.url:
+        # Check if this is a section/listing page (prioritize article lists over individual articles)
+        if ('section/' in page.url or 'category/' in page.url or 'topic/' in page.url or
+            any(domain in page.url for domain in ['nytimes.com/section', 'bbc.com/news', 'reuters.com/'])):
             return await self._extract_article_links_async(page)
 
         # If we have structured data for individual articles, return it
@@ -588,17 +590,19 @@ class BrowserClient(DataFetch):
                     pageHeight: document.body.scrollHeight
                 };
 
-                // NYT-specific selectors for article links
+                // Multi-site selectors for article links (prioritize generic patterns)
                 const articleSelectors = [
-                    'a[href*="/2024/"]',  // NYT article URLs contain year
-                    'a[href*="/2025/"]',
+                    // Generic article patterns (work across sites)
                     'article a',
-                    '.story-wrapper a',
-                    '.css-1l4spti a',  // NYT CSS classes (may change)
-                    'h3 a',
-                    'h2 a',
-                    'h1 a',
-                    '[data-testid="headline"] a'
+                    'h1 a', 'h2 a', 'h3 a',
+                    '[data-testid="headline"] a',
+                    // Site-specific patterns
+                    'a[href*="/2024/"]', 'a[href*="/2025/"]',  // Date-based URLs (NYT, others)
+                    '.story-wrapper a',  // NYT
+                    '.css-1l4spti a',   // NYT (may change)
+                    '[data-component="headline"] a',  // BBC
+                    '[class*="story"] a',  // Reuters and others
+                    '[class*="headline"] a'  // Generic headline classes
                 ];
 
                 function extractCurrentArticles() {
@@ -726,17 +730,19 @@ class BrowserClient(DataFetch):
                     pageHeight: document.body.scrollHeight
                 };
 
-                // NYT-specific selectors for article links
+                // Multi-site selectors for article links (prioritize generic patterns)
                 const articleSelectors = [
-                    'a[href*="/2024/"]',  // NYT article URLs contain year
-                    'a[href*="/2025/"]',
+                    // Generic article patterns (work across sites)
                     'article a',
-                    '.story-wrapper a',
-                    '.css-1l4spti a',  // NYT CSS classes (may change)
-                    'h3 a',
-                    'h2 a',
-                    'h1 a',
-                    '[data-testid="headline"] a'
+                    'h1 a', 'h2 a', 'h3 a',
+                    '[data-testid="headline"] a',
+                    // Site-specific patterns
+                    'a[href*="/2024/"]', 'a[href*="/2025/"]',  // Date-based URLs (NYT, others)
+                    '.story-wrapper a',  // NYT
+                    '.css-1l4spti a',   // NYT (may change)
+                    '[data-component="headline"] a',  // BBC
+                    '[class*="story"] a',  // Reuters and others
+                    '[class*="headline"] a'  // Generic headline classes
                 ];
 
                 function extractCurrentArticles() {
