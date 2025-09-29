@@ -294,7 +294,7 @@ ADAPTIVE WEBSITE DETECTION:
 
 WEBSITE PATTERN ANALYSIS:
 - NYT: /section/[topic] format (politics, world/us, business, technology, etc.) - AVOID /search URLs
-- BBC: /news/[topic] format (world/us-and-canada, politics, business, technology) - AVOID /search URLs
+- BBC: /news/[topic] format (world, politics, business, technology) - AVOID /search URLs
 - Reuters: /[topic]/ or /world/[region]/ format (politics, world/us, business)
 - CNN: /politics/, /business/, /world/ sections - AVOID search pages
 - Guardian: /[section]/[topic] format (world, business, technology, etc.)
@@ -312,13 +312,13 @@ Examples of ADAPTIVE generation:
 Query "articles about climate from BBC" → https://www.bbc.com/news/science-environment, https://www.bbc.com/news/world, https://www.bbc.com/news/business
 Query "technology news from Reuters" → https://www.reuters.com/technology/, https://www.reuters.com/business/, https://www.reuters.com/world/
 Query "articles about Trump" (no site) → VARY the order, don't always start with NYT:
-  https://www.bbc.com/news/world/us-and-canada
+  https://www.bbc.com/news/politics
   https://www.reuters.com/world/us/
   https://www.nytimes.com/section/politics
 Query "articles about politics" →
   https://www.reuters.com/world/us/
   https://www.nytimes.com/section/politics
-  https://www.bbc.com/news/world/us-and-canada
+  https://www.bbc.com/news/politics
 
 UNKNOWN WEBSITE ADAPTATION:
 For unfamiliar domains, try these common patterns:
@@ -363,6 +363,8 @@ ADAPTIVE IMPLEMENTATION STRATEGY:
 5. CRITICAL: Fetch from ALL URLs provided, not just the first one
 6. CRITICAL: Combine results from all websites into a unified list
 7. CRITICAL: Handle cases where some websites fail gracefully
+8. CRITICAL: Use different selectors per website - NYT selectors won't work on BBC/Reuters
+9. CRITICAL: Parse each URL with website-appropriate logic, not one-size-fits-all
 
 WEBSITE-SPECIFIC ADAPTATIONS:
 - NYT: Look for 'data-testid="headline"', 'section[name="articleBody"]'
@@ -415,19 +417,33 @@ def fetch(self) -> FetchResult:
 
     for url in self.spec.urls:
         try:
-            # Fetch from this specific URL
-            single_result = self._fetch_single_url(url)
-            if single_result and not single_result.error:
-                if isinstance(single_result.data, list):
-                    all_data.extend(single_result.data)
-                else:
-                    all_data.append(single_result.data)
+            # Determine website type for adaptive parsing
+            website_type = self._detect_website_type(url)
+
+            # Fetch from this specific URL with site-specific logic
+            if website_type == 'nyt':
+                articles = self._extract_nyt_articles(url)
+            elif website_type == 'bbc':
+                articles = self._extract_bbc_articles(url)
+            elif website_type == 'reuters':
+                articles = self._extract_reuters_articles(url)
+            else:
+                articles = self._extract_generic_articles(url)
+
+            if articles:
+                all_data.extend(articles if isinstance(articles, list) else [articles])
                 successful_urls.append(url)
         except Exception as e:
             # Log error but continue with other URLs
-            pass
+            continue
 
     return FetchResult(data=all_data, ...)
+
+def _detect_website_type(self, url):
+    if 'nytimes.com' in url: return 'nyt'
+    elif 'bbc.com' in url: return 'bbc'
+    elif 'reuters.com' in url: return 'reuters'
+    return 'generic'
 ```
 
 CRITICAL IMPORT PATHS (use exactly as shown):

@@ -22,7 +22,8 @@
       "Bash(rm:*)",
       "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about Trump\")",
       "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about technology\")",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []
