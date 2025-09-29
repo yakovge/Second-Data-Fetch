@@ -264,16 +264,23 @@ def fetch_articles(query):
             scored_articles.sort(key=lambda x: x[0], reverse=True)
 
             # Filter for only relevant articles (score > 0) and take top 10
-            relevant_articles = [(score, article) for score, article in scored_articles if score > 0]
+            # Special rule: exclude 1.0 scores unless they're in top 3 positions
+            filtered_articles = []
+            for i, (score, article) in enumerate(scored_articles):
+                if score > 0:
+                    # Allow 1.0 scores only if they're in top 3 positions
+                    if score == 1.0 and i >= 3:
+                        continue  # Skip 1.0 scores outside top 3
+                    filtered_articles.append((score, article))
 
-            # If we have more than 10 relevant articles, take the best 10
-            # If we have fewer than 10 relevant articles, supplement with highest-scoring others
-            if len(relevant_articles) >= 10:
-                articles_to_show = relevant_articles[:10]
-                print(f"Showing top 10 most relevant articles (from {len(relevant_articles)} relevant, {len(scored_articles)} total)")
+            # If we have more than 10 filtered articles, take the best 10
+            # If we have fewer than 10 filtered articles, supplement with highest-scoring others
+            if len(filtered_articles) >= 10:
+                articles_to_show = filtered_articles[:10]
+                print(f"Showing top 10 most relevant articles (from {len(filtered_articles)} relevant, {len(scored_articles)} total)")
             else:
-                articles_to_show = scored_articles[:10]  # Take top 10 regardless of relevance
-                print(f"Showing top 10 articles ({len(relevant_articles)} highly relevant, {len(scored_articles)} total)")
+                articles_to_show = filtered_articles[:10] if filtered_articles else scored_articles[:10]
+                print(f"Showing top {len(articles_to_show)} articles ({len(filtered_articles)} highly relevant, {len(scored_articles)} total)")
             print()
             for i, (score, article) in enumerate(articles_to_show, 1):
                 if isinstance(article, dict):
