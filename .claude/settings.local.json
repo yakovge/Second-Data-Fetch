@@ -10,7 +10,9 @@
       "Bash(\"venv\\Scripts\\python.exe\" example_usage.py)",
       "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"test query\")",
       "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about climate from BBC\")",
-      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about climate\")"
+      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about climate\")",
+      "Bash(find:*)",
+      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about technology from TechCrunch\")"
     ],
     "deny": [],
     "ask": []
