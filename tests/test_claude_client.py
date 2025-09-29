@@ -118,8 +118,8 @@ class TestClaudeClient:
 
         assert "articles about climate from BBC" in prompt
         assert "bbc.com, bbc.co.uk" in prompt
-        assert "NEVER search page URLs" in prompt
-        assert "VARY the order" in prompt
+        assert "BBC URL PATTERNS" in prompt
+        assert "PREFER search URLs" in prompt or "PREFER: Use search URL" in prompt
 
     def test_create_url_generation_prompt_multi_site(self):
         """Test URL generation prompt for multi-site queries."""
@@ -130,8 +130,8 @@ class TestClaudeClient:
 
         assert "articles about Trump" in prompt
         assert "nytimes.com, bbc.com, reuters.com" in prompt
-        assert "3 different major news sites" in prompt
-        assert "avoid search page URLs" in prompt
+        assert "CRITICAL REQUIREMENTS FOR SPECIFIC TOPICS" in prompt
+        assert "PREFER search URLs" in prompt
 
     def test_create_implementation_prompt_multi_site_requirements(self):
         """Test implementation generation prompt includes multi-site requirements."""
@@ -147,11 +147,11 @@ class TestClaudeClient:
             spec.method, "sample data", "DataFetch"
         )
 
-        assert "TRULY ADAPTIVE" in prompt
-        assert "ALL target websites" in prompt
-        assert "fetch from ALL URLs provided" in prompt
-        assert "NOT search pages" in prompt
-        assert "Return articles from ALL provided URLs" in prompt
+        assert "adaptive Python code generator" in prompt
+        assert "MULTI-SITE PROCESSING" in prompt
+        assert "Handle each website type differently" in prompt
+        assert "Combine results from all successful sites" in prompt
+        assert "website detection" in prompt
 
     def test_parse_url_response_diverse_urls(self):
         """Test parsing URL response with diverse sources."""
@@ -250,14 +250,13 @@ class TestClaudeClient:
 
     def test_validate_generated_code_safe_code_passes(self):
         """Test validation allows safe code."""
-        safe_code = """
-        class SafeFetch(DataFetch):
-            def fetch(self):
-                return {"articles": []}
+        safe_code = """class SafeFetch(DataFetch):
+    def fetch(self):
+        return {"articles": []}
 
-            def validate_data(self, data):
-                return isinstance(data, (dict, list))
-        """
+    def validate_data(self, data):
+        return isinstance(data, (dict, list))
+"""
 
         # Should not raise any exception
         self.client._validate_generated_code(safe_code)

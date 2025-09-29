@@ -63,9 +63,13 @@ class TestAIOrchestrator:
         query = "articles about technology"
         result = self.orchestrator._detect_target_websites(query)
 
-        # Should default to diverse multi-site list
-        expected_defaults = ['nytimes.com', 'bbc.com', 'reuters.com']
-        assert result == expected_defaults
+        # Should return one of the rotation patterns to avoid bias
+        expected_rotations = [
+            ['bbc.com', 'cnn.com', 'nytimes.com'],
+            ['cnn.com', 'nytimes.com', 'bbc.com'],
+            ['nytimes.com', 'bbc.com', 'cnn.com']
+        ]
+        assert result in expected_rotations
 
     def test_collect_sample_data_multiple_websites(self):
         """Test sample collection from multiple websites."""
@@ -178,9 +182,13 @@ class TestAIOrchestrator:
 
             assert result == mock_class
 
-            # Check that AI client was called with largest sample
+            # Check that AI client was called with unified multi-site sample
             call_args = self.mock_ai_client.generate_datafetch_implementation.call_args
-            assert call_args[0][1] == "sample"  # Should use the data from largest sample
+            sample_arg = call_args[0][1]
+            assert isinstance(sample_arg, dict)
+            assert "multi_site_analysis" in sample_arg
+            assert "site_samples" in sample_arg
+            assert sample_arg["multi_site_analysis"]["sites_analyzed"] == ["nytimes.com", "bbc.com"]
 
     def test_orchestrate_fetch_complete_workflow(self):
         """Test complete orchestration workflow."""
@@ -297,7 +305,7 @@ class TestAIDataFetchFactory:
         """Test DataFetch creation from text."""
         query = "get news articles"
 
-        with patch.object(self.factory.orchestrator, '_discover_urls', return_value=["https://test.com"]):
+        with patch.object(self.factory.orchestrator, '_discover_urls', return_value=["https://www.bbc.com/news"]):
             datafetch = self.factory.create_from_text(query)
 
             assert datafetch is not None
@@ -318,7 +326,7 @@ class TestAIDataFetchFactory:
 
         self.mock_orchestrator.orchestrate_fetch.return_value = mock_result
 
-        with patch.object(self.factory.orchestrator, '_discover_urls', return_value=["https://test.com"]):
+        with patch.object(self.factory.orchestrator, '_discover_urls', return_value=["https://www.bbc.com/news"]):
             datafetch = self.factory.create_from_text(query)
             result = datafetch.fetch()
 
@@ -343,7 +351,7 @@ class TestAIDataFetchFactory:
 
         self.mock_orchestrator.aorchestrate_fetch = mock_aorchestrate
 
-        with patch.object(self.factory.orchestrator, '_discover_urls', return_value=["https://test.com"]):
+        with patch.object(self.factory.orchestrator, '_discover_urls', return_value=["https://www.bbc.com/news"]):
             datafetch = self.factory.create_from_text(query)
             result = await datafetch.afetch()
 
@@ -391,7 +399,7 @@ class TestAIOrchestratorIntegration:
 
         with patch('src.core.ai_orchestrator.HTTPClient') as mock_http:
             # Mock different responses for different URLs
-            def create_mock_client(spec):
+            def create_mock_client(spec, cache_client=None):
                 mock_client = Mock()
                 if "json" in spec.urls[0]:
                     mock_result = Mock()
@@ -410,8 +418,9 @@ class TestAIOrchestratorIntegration:
             result = orchestrator._collect_sample_data(urls, "test query")
 
             assert isinstance(result, dict)
-            assert len(result) == 2
+            assert len(result) == 1  # Both URLs are on same domain, so consolidated
             assert "httpbin.org" in result
+            assert result["httpbin.org"]["data"] is not None
 
 
 if __name__ == "__main__":

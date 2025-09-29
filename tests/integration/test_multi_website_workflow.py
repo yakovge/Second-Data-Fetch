@@ -85,7 +85,7 @@ class TestMultiWebsiteWorkflow:
         ]
 
         with patch('src.core.ai_orchestrator.HTTPClient') as mock_http_client:
-            def create_mock_client(spec):
+            def create_mock_client(spec, cache_client=None):
                 mock_client = Mock()
                 url = spec.urls[0]
 
@@ -310,7 +310,7 @@ class ClimateFetch(DataFetch):
         start_time = time.time()
 
         with patch('src.core.ai_orchestrator.HTTPClient') as mock_http:
-            def create_mock_client(spec):
+            def create_mock_client(spec, cache_client=None):
                 mock_client = Mock()
                 mock_result = Mock()
 

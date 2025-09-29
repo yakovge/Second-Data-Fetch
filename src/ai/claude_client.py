@@ -837,12 +837,12 @@ MULTI-SITE PROCESSING:
             for key, value in sample_data.items():
                 if isinstance(value, str):
                     properties[key] = {"type": "string"}
+                elif isinstance(value, bool):  # Check bool before int since bool is subclass of int
+                    properties[key] = {"type": "boolean"}
                 elif isinstance(value, int):
                     properties[key] = {"type": "integer"}
                 elif isinstance(value, float):
                     properties[key] = {"type": "number"}
-                elif isinstance(value, bool):
-                    properties[key] = {"type": "boolean"}
                 elif isinstance(value, list):
                     properties[key] = {"type": "array", "items": {"type": "string"}}
                 else:
