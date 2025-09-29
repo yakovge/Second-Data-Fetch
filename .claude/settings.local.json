@@ -19,7 +19,8 @@
       "Bash(tree:*)",
       "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about technology from Reuters\")",
       "Bash(rmdir:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about Trump\")"
     ],
     "deny": [],
     "ask": []

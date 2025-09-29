@@ -293,12 +293,14 @@ ADAPTIVE WEBSITE DETECTION:
 3. Learn and adapt to ANY website's URL structure by analyzing the domain
 
 WEBSITE PATTERN ANALYSIS:
-- NYT: /section/[topic] format (climate, technology, world/europe, etc.)
-- BBC: /news/[topic] format (science-environment, technology, world, etc.)
-- Reuters: /[topic]/ or /world/[region]/ format
-- CNN: /[year]/[month]/[day]/[section]/ or topic-based sections
+- NYT: /section/[topic] format (politics, world/us, business, technology, etc.) - AVOID /search URLs
+- BBC: /news/[topic] format (world, politics, business, technology) - AVOID /search URLs
+- Reuters: /[topic]/ or /world/[region]/ format (politics, world/us, business)
+- CNN: /politics/, /business/, /world/ sections - AVOID search pages
 - Guardian: /[section]/[topic] format (world, business, technology, etc.)
 - Unknown sites: Analyze domain and infer likely URL patterns
+
+CRITICAL: Always generate section/category URLs that list articles, NEVER search page URLs like /search?q= or similar
 
 ADAPTIVE URL GENERATION:
 1. Detect target website(s) from query
@@ -307,12 +309,16 @@ ADAPTIVE URL GENERATION:
 4. Generate 3 relevant URLs per target site
 
 Examples of ADAPTIVE generation:
-Query "articles about climate from BBC" → https://www.bbc.com/news/science-environment, https://www.bbc.com/news/climate, https://www.bbc.com/news/world
+Query "articles about climate from BBC" → https://www.bbc.com/news/science-environment, https://www.bbc.com/news/world, https://www.bbc.com/news/business
 Query "technology news from Reuters" → https://www.reuters.com/technology/, https://www.reuters.com/business/, https://www.reuters.com/world/
-Query "articles about climate" (no site) →
-  https://www.nytimes.com/section/climate
-  https://www.bbc.com/news/science-environment
-  https://www.reuters.com/business/environment/
+Query "articles about Trump" (no site) → VARY the order, don't always start with NYT:
+  https://www.bbc.com/news/world-us-canada
+  https://www.reuters.com/world/us/
+  https://www.nytimes.com/section/politics
+Query "articles about politics" →
+  https://www.reuters.com/world/us/
+  https://www.nytimes.com/section/politics
+  https://www.bbc.com/news/world-us-canada
 
 UNKNOWN WEBSITE ADAPTATION:
 For unfamiliar domains, try these common patterns:
@@ -387,13 +393,14 @@ def _get_adaptive_selectors(self, website_type):
 ```
 
 REQUIREMENTS:
-1. Inherit from DataFetch and implement: fetch(), afetch(), validate_data(), extract_structure()
+1. Inherit from DataFetch and implement ALL required methods: fetch(), afetch(), fetch_stream(), afetch_stream(), validate_data(), extract_structure()
 2. Use HTTPClient or BrowserClient based on method parameter
 3. Implement adaptive content extraction based on detected website
 4. Include robust error handling for unknown sites
-5. Extract articles with title, summary, url, and publish_date when possible
-6. Handle both single articles and article lists
+5. Extract INDIVIDUAL articles with title, summary, url, and publish_date when possible - NOT search pages
+6. Handle both single articles and article lists - avoid search page URLs, prefer section URLs that list articles
 7. Add rate limiting appropriate for the detected website
+8. CRITICAL: Implement fetch_stream() and afetch_stream() methods that yield individual articles
 
 CRITICAL IMPORT PATHS (use exactly as shown):
 ```python

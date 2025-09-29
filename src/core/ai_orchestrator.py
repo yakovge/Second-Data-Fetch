@@ -185,12 +185,13 @@ class AIOrchestrator:
             List of URLs to fetch from
         """
         self.logger.info("Step 1: Discovering URLs with adaptive website detection")
-        print(f"[URL DISCOVERY] Analyzing query: '{raw_text}'")
+        print(f"\n[URL DISCOVERY]")
+        print(f"   Query: '{raw_text}'")
 
         # Detect target websites first
         target_sites = self._detect_target_websites(raw_text)
         self.logger.info(f"Detected target websites: {target_sites}")
-        print(f"[URL DISCOVERY] Target websites detected: {target_sites}")
+        print(f"   Target websites: {', '.join(target_sites)}")
 
         # First, try to extract URLs from text using parser
         parsed = self.parser.parse(raw_text)
@@ -198,30 +199,30 @@ class AIOrchestrator:
 
         if urls:
             self.logger.info(f"Found {len(urls)} URLs in text")
-            print(f"[URL DISCOVERY] Found {len(urls)} URLs directly in text:")
+            print(f"   [SUCCESS] Found {len(urls)} URLs directly in text:")
             for i, url in enumerate(urls, 1):
-                print(f"  {i}. {url}")
+                print(f"      {i}. {url}")
             return urls
 
         # If no URLs found, use AI with website-aware prompting
         if self.ai_client:
             self.logger.info(f"No URLs found, using AI with adaptive generation for {len(target_sites)} websites")
-            print(f"[URL DISCOVERY] No direct URLs found. Using AI to generate URLs for {len(target_sites)} websites...")
+            print(f"   [AI] Generating URLs for {len(target_sites)} websites...")
             ai_urls = self.ai_client.generate_urls_from_text(raw_text, domain_hints=target_sites)
             if ai_urls:
                 self.logger.info(f"AI generated {len(ai_urls)} adaptive URLs: {ai_urls}")
-                print(f"[URL DISCOVERY] AI generated {len(ai_urls)} URLs:")
+                print(f"   [SUCCESS] Generated {len(ai_urls)} URLs:")
                 for i, url in enumerate(ai_urls, 1):
-                    print(f"  {i}. {url}")
+                    print(f"      {i}. {url}")
                 return ai_urls
 
         # Fallback to hardcoded mapping (existing behavior)
         self.logger.info("Falling back to hardcoded URL mapping")
-        print("[URL DISCOVERY] AI generation failed. Using fallback URL mapping...")
+        print("   [WARNING] AI generation failed. Using fallback mapping...")
         fallback_urls = self._fallback_url_mapping(raw_text)
-        print(f"[URL DISCOVERY] Fallback generated {len(fallback_urls)} URLs:")
+        print(f"   [FALLBACK] Generated {len(fallback_urls)} URLs:")
         for i, url in enumerate(fallback_urls, 1):
-            print(f"  {i}. {url}")
+            print(f"      {i}. {url}")
         return fallback_urls
 
     def _collect_sample_data(self, urls: List[str], raw_text: str) -> Optional[Any]:
@@ -236,14 +237,14 @@ class AIOrchestrator:
             Sample data or None if collection fails
         """
         self.logger.info("Step 2: Collecting sample data")
-        print(f"[SAMPLE COLLECTION] Collecting sample data to understand website structure...")
+        print(f"\n[SAMPLE COLLECTION]")
 
         if not urls:
-            print("[SAMPLE COLLECTION] No URLs available for sampling")
+            print("   [ERROR] No URLs available for sampling")
             return None
 
         sample_url = urls[0]
-        print(f"[SAMPLE COLLECTION] Sampling from first URL: {sample_url}")
+        print(f"   Sampling from: {sample_url}")
 
         # Create a simple spec for sampling
         sample_spec = FetchSpec(
@@ -262,16 +263,16 @@ class AIOrchestrator:
 
             if result.error:
                 self.logger.warning(f"Sample collection failed: {result.error}")
-                print(f"[SAMPLE COLLECTION] Failed to collect sample data: {result.error}")
+                print(f"   [FAILED] {result.error}")
                 return None
 
             self.logger.info("Sample data collected successfully")
-            print(f"[SAMPLE COLLECTION] Successfully collected sample data ({len(str(result.data))} characters)")
+            print(f"   [SUCCESS] Collected sample data ({len(str(result.data))} characters)")
             return result.data
 
         except Exception as e:
             self.logger.warning(f"Sample collection error: {str(e)}")
-            print(f"[SAMPLE COLLECTION] Error during sampling: {str(e)}")
+            print(f"   [ERROR] {str(e)}")
             return None
 
     def _generate_structure(self, sample_data: Optional[Any], raw_text: str) -> Dict[str, Any]:
@@ -342,20 +343,22 @@ class AIOrchestrator:
             Generated DataFetch class
         """
         self.logger.info("Step 5: Generating DataFetch implementation")
-        print(f"[IMPLEMENTATION] Generating custom DataFetch implementation...")
+        print(f"\n[IMPLEMENTATION GENERATION]")
 
         if not self.ai_client:
             # Fallback to generic implementation
             self.logger.info("No AI client, using generic implementation")
-            print("[IMPLEMENTATION] No AI client available. Using generic implementation.")
+            print("   [ERROR] No AI client available. Using generic implementation.")
             return self._create_generic_implementation()
 
         try:
             # Enhance spec with website context for adaptive generation
             target_sites = self._detect_target_websites(spec.raw_text)
             self.logger.info(f"Generating adaptive implementation for websites: {target_sites}")
-            print(f"[IMPLEMENTATION] Creating adaptive implementation for websites: {target_sites}")
-            print(f"[IMPLEMENTATION] URLs to be handled: {spec.urls}")
+            print(f"   Target websites: {', '.join(target_sites)}")
+            print(f"   URLs to handle: {len(spec.urls)} URLs")
+            for i, url in enumerate(spec.urls, 1):
+                print(f"      {i}. {url}")
 
             # Generate Python code using AI with website-specific adaptations
             code = self.ai_client.generate_datafetch_implementation(
@@ -366,12 +369,13 @@ class AIOrchestrator:
             implementation_class = self._compile_and_load_code(code, spec)
 
             self.logger.info(f"Adaptive AI implementation generated and compiled successfully for {len(target_sites)} websites")
-            print(f"[IMPLEMENTATION] Successfully generated and compiled adaptive implementation")
+            print(f"   [SUCCESS] Generated and compiled adaptive implementation")
             return implementation_class
 
         except Exception as e:
             self.logger.error(f"Adaptive implementation generation failed: {str(e)}")
-            print(f"[IMPLEMENTATION] AI generation failed: {str(e)}. Using generic implementation.")
+            print(f"   [FAILED] AI generation failed: {str(e)}")
+            print(f"   [FALLBACK] Using generic implementation")
             # Fallback to generic implementation
             return self._create_generic_implementation()
 
@@ -511,9 +515,10 @@ from src.collectors.browser_client import BrowserClient
             FetchResult from execution
         """
         self.logger.info("Step 6: Executing generated implementation")
-        print(f"[EXECUTION] Running generated implementation on {len(spec.urls)} URLs...")
+        print(f"\n[EXECUTION]")
+        print(f"   Running on {len(spec.urls)} URLs:")
         for i, url in enumerate(spec.urls, 1):
-            print(f"[EXECUTION]   {i}. {url}")
+            print(f"      {i}. {url}")
 
         try:
             # Instantiate the implementation
@@ -528,12 +533,13 @@ from src.collectors.browser_client import BrowserClient
             result = instance.fetch()
 
             self.logger.info("Implementation executed successfully")
-            print(f"[EXECUTION] Successfully executed. Found {len(result.data) if isinstance(result.data, (list, tuple)) else 1} items")
+            items_count = len(result.data) if isinstance(result.data, (list, tuple)) else 1
+            print(f"   [SUCCESS] Found {items_count} items")
             return result
 
         except Exception as e:
             self.logger.error(f"Implementation execution failed: {str(e)}")
-            print(f"[EXECUTION] Execution failed: {str(e)}")
+            print(f"   [FAILED] Execution failed: {str(e)}")
             raise
 
     def _fallback_url_mapping(self, raw_text: str) -> List[str]:
