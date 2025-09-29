@@ -21,7 +21,8 @@
       "Bash(rmdir:*)",
       "Bash(rm:*)",
       "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about Trump\")",
-      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about technology\")"
+      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about technology\")",
+      "Bash(pytest:*)"
     ],
     "deny": [],
     "ask": []

@@ -294,7 +294,7 @@ ADAPTIVE WEBSITE DETECTION:
 
 WEBSITE PATTERN ANALYSIS:
 - NYT: /section/[topic] format (politics, world/us, business, technology, etc.) - AVOID /search URLs
-- BBC: /news/[topic] format (world, politics, business, technology) - AVOID /search URLs
+- BBC: /news/[topic] format (world/us-and-canada, politics, business, technology) - AVOID /search URLs
 - Reuters: /[topic]/ or /world/[region]/ format (politics, world/us, business)
 - CNN: /politics/, /business/, /world/ sections - AVOID search pages
 - Guardian: /[section]/[topic] format (world, business, technology, etc.)
@@ -312,13 +312,13 @@ Examples of ADAPTIVE generation:
 Query "articles about climate from BBC" → https://www.bbc.com/news/science-environment, https://www.bbc.com/news/world, https://www.bbc.com/news/business
 Query "technology news from Reuters" → https://www.reuters.com/technology/, https://www.reuters.com/business/, https://www.reuters.com/world/
 Query "articles about Trump" (no site) → VARY the order, don't always start with NYT:
-  https://www.bbc.com/news/world-us-canada
+  https://www.bbc.com/news/world/us-and-canada
   https://www.reuters.com/world/us/
   https://www.nytimes.com/section/politics
 Query "articles about politics" →
   https://www.reuters.com/world/us/
   https://www.nytimes.com/section/politics
-  https://www.bbc.com/news/world-us-canada
+  https://www.bbc.com/news/world/us-and-canada
 
 UNKNOWN WEBSITE ADAPTATION:
 For unfamiliar domains, try these common patterns:
@@ -405,7 +405,30 @@ REQUIREMENTS:
 7. Add rate limiting appropriate for the detected website
 8. CRITICAL: Implement fetch_stream() and afetch_stream() methods that yield individual articles
 9. CRITICAL: Use MULTIPLE selector strategies per website to ensure article extraction from different sites
-10. CRITICAL: Return articles from ALL provided URLs, not just the first one
+10. CRITICAL: Process ALL URLs in spec.urls list - iterate through each URL and combine results
+
+MULTI-URL PROCESSING PATTERN (REQUIRED):
+```python
+def fetch(self) -> FetchResult:
+    all_data = []
+    successful_urls = []
+
+    for url in self.spec.urls:
+        try:
+            # Fetch from this specific URL
+            single_result = self._fetch_single_url(url)
+            if single_result and not single_result.error:
+                if isinstance(single_result.data, list):
+                    all_data.extend(single_result.data)
+                else:
+                    all_data.append(single_result.data)
+                successful_urls.append(url)
+        except Exception as e:
+            # Log error but continue with other URLs
+            pass
+
+    return FetchResult(data=all_data, ...)
+```
 
 CRITICAL IMPORT PATHS (use exactly as shown):
 ```python

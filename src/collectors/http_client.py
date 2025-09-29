@@ -143,7 +143,83 @@ class HTTPClient(DataFetch):
                 error=str(e),
                 execution_time=execution_time
             )
-    
+
+    def fetch_all(self) -> FetchResult:
+        """
+        Fetch from ALL URLs in the spec and combine results.
+        This addresses the multi-URL architecture issue.
+        """
+        start_time = time.time()
+        all_data = []
+        successful_urls = []
+        failed_urls = []
+        total_fetch_time = 0
+
+        self.logger.info(f"Fetching from {len(self._spec.urls)} URLs")
+
+        for i, url in enumerate(self._spec.urls, 1):
+            try:
+                self.logger.info(f"Processing URL {i}/{len(self._spec.urls)}: {url}")
+
+                # Try cache first
+                cached_result = None
+                if self._cache_client:
+                    cached_result = self._try_cache(url)
+
+                if cached_result:
+                    result = cached_result
+                    self.logger.info(f"Cache hit for {url}")
+                else:
+                    # Fetch individual URL
+                    result = self._fetch_single_url(url)
+
+                    # Store in cache if successful
+                    if self._cache_client and result.error is None:
+                        self._store_in_cache(url, result)
+
+                if result.error is None:
+                    # Combine data from this URL
+                    if isinstance(result.data, list):
+                        all_data.extend(result.data)
+                    else:
+                        all_data.append(result.data)
+                    successful_urls.append(url)
+                    self.logger.info(f"Successfully fetched from {url}")
+                else:
+                    failed_urls.append({'url': url, 'error': result.error})
+                    self.logger.warning(f"Failed to fetch from {url}: {result.error}")
+
+                total_fetch_time += result.execution_time
+
+            except Exception as e:
+                self.logger.error(f"Exception fetching {url}: {str(e)}")
+                failed_urls.append({'url': url, 'error': str(e)})
+
+        # Record metrics
+        execution_time = time.time() - start_time
+        self._record_metric('total_execution_time', execution_time)
+        self._record_metric('urls_fetched', len(successful_urls))
+        self._record_metric('urls_failed', len(failed_urls))
+
+        # Create combined result
+        primary_url = successful_urls[0] if successful_urls else self._spec.urls[0]
+
+        return FetchResult(
+            url=primary_url,
+            data=all_data,
+            timestamp=datetime.now(),
+            format=self._spec.expected_format,
+            method=FetchMethod.REQUESTS,
+            metadata={
+                'total_urls': len(self._spec.urls),
+                'successful_urls': successful_urls,
+                'failed_urls': failed_urls,
+                'combined_results': True
+            },
+            error=None if successful_urls else f"All {len(failed_urls)} URLs failed",
+            execution_time=execution_time
+        )
+
     async def afetch(self) -> FetchResult:
         """
         Asynchronous fetch operation using aiohttp.

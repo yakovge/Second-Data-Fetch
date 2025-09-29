@@ -522,8 +522,9 @@ from src.collectors.browser_client import BrowserClient
                     self.client = HTTPClient(spec, cache_client)
 
             def fetch(self) -> FetchResult:
-                """Fetch data using the appropriate client."""
-                return self.client.fetch()
+                """Fetch data from ALL URLs using the appropriate client."""
+                # Use fetch_all() to process all URLs in the spec
+                return self.client.fetch_all()
 
             async def afetch(self) -> FetchResult:
                 """Async fetch data."""
