@@ -17,7 +17,9 @@
       "Bash(dir implementations)",
       "Bash(dir:*)",
       "Bash(tree:*)",
-      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about technology from Reuters\")"
+      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about technology from Reuters\")",
+      "Bash(rmdir:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []
