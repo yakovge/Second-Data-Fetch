@@ -672,19 +672,100 @@ class BrowserClient(DataFetch):
                     pageHeight: document.body.scrollHeight
                 };
 
-                // Multi-site selectors for article links (prioritize generic patterns)
+                // Enhanced article validation function
+                function isValidArticleLink(href, text) {
+                    if (!href || !text || text.length < 10) return false;
+
+                    const url = href.toLowerCase();
+                    const title = text.toLowerCase();
+
+                    // Exclude navigation, social, and non-article links
+                    const excludePatterns = [
+                        '/search/', '/about/', '/contact/', '/privacy/', '/terms/',
+                        '/subscribe/', '/newsletter/', '/login/', '/register/',
+                        'facebook.com', 'twitter.com', 'instagram.com', 'youtube.com',
+                        'mailto:', 'tel:', '#', 'javascript:'
+                    ];
+
+                    for (const pattern of excludePatterns) {
+                        if (url.includes(pattern)) return false;
+                    }
+
+                    // Include if it has date patterns (2024/2025)
+                    if (url.includes('/2024/') || url.includes('/2025/')) return true;
+
+                    // Include BBC news URLs
+                    if (url.includes('bbc.com') && url.includes('/news/')) return true;
+
+                    // Include CNN article patterns
+                    if (url.includes('cnn.com') && (
+                        url.includes('/2024/') || url.includes('/2025/') ||
+                        url.includes('index.html') || url.includes('/politics/') ||
+                        url.includes('/world/') || url.includes('/us/')
+                    )) return true;
+
+                    // Include Guardian articles
+                    if (url.includes('guardian.com') && (
+                        url.includes('/2024/') || url.includes('/2025/') ||
+                        url.match(/\/\d{4}\/[a-z]{3}\/\d{2}\//) // Guardian date pattern
+                    )) return true;
+
+                    // Include NYT articles
+                    if (url.includes('nytimes.com') && (
+                        url.includes('/2024/') || url.includes('/2025/') ||
+                        url.includes('html') // NYT often ends in .html
+                    )) return true;
+
+                    // Include Reuters articles
+                    if (url.includes('reuters.com') && (
+                        url.includes('/2024/') || url.includes('/2025/') ||
+                        url.match(/\/\d{4}\/\d{2}\/\d{2}\//)
+                    )) return true;
+
+                    // Generic article patterns
+                    if (url.includes('/article/') || url.includes('/story/') || url.includes('/post/')) return true;
+
+                    return false;
+                }
+
+                // Enhanced multi-site selectors for article links
                 const articleSelectors = [
-                    // Generic article patterns (work across sites)
+                    // Generic article patterns
                     'article a',
                     'h1 a', 'h2 a', 'h3 a',
                     '[data-testid="headline"] a',
-                    // Site-specific patterns
-                    'a[href*="/2024/"]', 'a[href*="/2025/"]',  // Date-based URLs (NYT, others)
-                    '.story-wrapper a',  // NYT
-                    '.css-1l4spti a',   // NYT (may change)
-                    '[data-component="headline"] a',  // BBC
-                    '[class*="story"] a',  // Reuters and others
-                    '[class*="headline"] a'  // Generic headline classes
+
+                    // BBC-specific patterns
+                    '[data-component="headline"] a',
+                    '.gs-c-promo-heading a',
+                    '.media__link a',
+                    '.gel-layout a',
+                    'a[href*="/news/"]',
+
+                    // CNN-specific patterns
+                    '.cd__headline a',
+                    '.container__headline a',
+                    '.card-media a',
+                    '.zn-body__paragraph a',
+                    '.headline a',
+
+                    // Guardian patterns
+                    '[data-link-name*="article"] a',
+                    '.fc-item__link a',
+                    '.u-faux-block-link a',
+
+                    // NYT patterns
+                    '.story-wrapper a',
+                    '.css-1l4spti a',
+
+                    // Reuters patterns
+                    '[class*="story"] a',
+                    '[class*="headline"] a',
+
+                    // Date-based and generic patterns
+                    'a[href*="/2024/"]', 'a[href*="/2025/"]',
+                    'a[href*="/article/"]',
+                    'a[href*="/story/"]'
                 ];
 
                 function extractCurrentArticles() {
@@ -698,8 +779,8 @@ class BrowserClient(DataFetch):
                             const href = link.href;
                             const text = link.textContent?.trim();
 
-                            // Filter for actual article URLs
-                            if (href && text && (href.includes('/2024/') || href.includes('/2025/'))) {
+                            // Enhanced filtering for actual article URLs
+                            if (isValidArticleLink(href, text)) {
                                 if (!foundLinks.has(href) && text.length > 10) {
                                     foundLinks.add(href);
 
@@ -812,19 +893,100 @@ class BrowserClient(DataFetch):
                     pageHeight: document.body.scrollHeight
                 };
 
-                // Multi-site selectors for article links (prioritize generic patterns)
+                // Enhanced article validation function (same as sync version)
+                function isValidArticleLink(href, text) {
+                    if (!href || !text || text.length < 10) return false;
+
+                    const url = href.toLowerCase();
+                    const title = text.toLowerCase();
+
+                    // Exclude navigation, social, and non-article links
+                    const excludePatterns = [
+                        '/search/', '/about/', '/contact/', '/privacy/', '/terms/',
+                        '/subscribe/', '/newsletter/', '/login/', '/register/',
+                        'facebook.com', 'twitter.com', 'instagram.com', 'youtube.com',
+                        'mailto:', 'tel:', '#', 'javascript:'
+                    ];
+
+                    for (const pattern of excludePatterns) {
+                        if (url.includes(pattern)) return false;
+                    }
+
+                    // Include if it has date patterns (2024/2025)
+                    if (url.includes('/2024/') || url.includes('/2025/')) return true;
+
+                    // Include BBC news URLs
+                    if (url.includes('bbc.com') && url.includes('/news/')) return true;
+
+                    // Include CNN article patterns
+                    if (url.includes('cnn.com') && (
+                        url.includes('/2024/') || url.includes('/2025/') ||
+                        url.includes('index.html') || url.includes('/politics/') ||
+                        url.includes('/world/') || url.includes('/us/')
+                    )) return true;
+
+                    // Include Guardian articles
+                    if (url.includes('guardian.com') && (
+                        url.includes('/2024/') || url.includes('/2025/') ||
+                        url.match(/\/\d{4}\/[a-z]{3}\/\d{2}\//) // Guardian date pattern
+                    )) return true;
+
+                    // Include NYT articles
+                    if (url.includes('nytimes.com') && (
+                        url.includes('/2024/') || url.includes('/2025/') ||
+                        url.includes('html') // NYT often ends in .html
+                    )) return true;
+
+                    // Include Reuters articles
+                    if (url.includes('reuters.com') && (
+                        url.includes('/2024/') || url.includes('/2025/') ||
+                        url.match(/\/\d{4}\/\d{2}\/\d{2}\//)
+                    )) return true;
+
+                    // Generic article patterns
+                    if (url.includes('/article/') || url.includes('/story/') || url.includes('/post/')) return true;
+
+                    return false;
+                }
+
+                // Enhanced multi-site selectors for article links
                 const articleSelectors = [
-                    // Generic article patterns (work across sites)
+                    // Generic article patterns
                     'article a',
                     'h1 a', 'h2 a', 'h3 a',
                     '[data-testid="headline"] a',
-                    // Site-specific patterns
-                    'a[href*="/2024/"]', 'a[href*="/2025/"]',  // Date-based URLs (NYT, others)
-                    '.story-wrapper a',  // NYT
-                    '.css-1l4spti a',   // NYT (may change)
-                    '[data-component="headline"] a',  // BBC
-                    '[class*="story"] a',  // Reuters and others
-                    '[class*="headline"] a'  // Generic headline classes
+
+                    // BBC-specific patterns
+                    '[data-component="headline"] a',
+                    '.gs-c-promo-heading a',
+                    '.media__link a',
+                    '.gel-layout a',
+                    'a[href*="/news/"]',
+
+                    // CNN-specific patterns
+                    '.cd__headline a',
+                    '.container__headline a',
+                    '.card-media a',
+                    '.zn-body__paragraph a',
+                    '.headline a',
+
+                    // Guardian patterns
+                    '[data-link-name*="article"] a',
+                    '.fc-item__link a',
+                    '.u-faux-block-link a',
+
+                    // NYT patterns
+                    '.story-wrapper a',
+                    '.css-1l4spti a',
+
+                    // Reuters patterns
+                    '[class*="story"] a',
+                    '[class*="headline"] a',
+
+                    // Date-based and generic patterns
+                    'a[href*="/2024/"]', 'a[href*="/2025/"]',
+                    'a[href*="/article/"]',
+                    'a[href*="/story/"]'
                 ];
 
                 function extractCurrentArticles() {
@@ -838,8 +1000,8 @@ class BrowserClient(DataFetch):
                             const href = link.href;
                             const text = link.textContent?.trim();
 
-                            // Filter for actual article URLs
-                            if (href && text && (href.includes('/2024/') || href.includes('/2025/'))) {
+                            // Enhanced filtering for actual article URLs
+                            if (isValidArticleLink(href, text)) {
                                 if (!foundLinks.has(href) && text.length > 10) {
                                     foundLinks.add(href);
 

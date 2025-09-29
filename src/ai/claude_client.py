@@ -294,85 +294,97 @@ User Requirements: {raw_text}{domain_section}
 
 {target_guidance}
 
-CRITICAL REQUIREMENTS:
-1. Generate section/category URLs that list articles, NEVER search pages (/search?q=)
-2. Focus on the specific websites mentioned or provided in domain hints
-3. Use website-appropriate URL patterns for each domain
+CRITICAL REQUIREMENTS FOR SPECIFIC TOPICS:
+1. For specific topics (like "Trump", "climate", "technology"): PREFER search URLs (/search?q=topic)
+2. For general browsing: Use section/category URLs (/politics, /world, /business)
+3. Focus on the specific websites mentioned or provided in domain hints
 4. Generate 2-3 relevant URLs per target website
-5. Ensure URLs lead to article listings, not individual articles
+5. Ensure URLs lead to article listings that match the requested topic
 
-ADAPTIVE APPROACH:
-- If specific website mentioned: Focus on that site's URL patterns
-- If multiple sites: Use each site's optimal URL structure
-- If unknown site: Use common news site patterns
-- Always prioritize section/category pages over search results
+ADAPTIVE URL STRATEGY:
+- Specific topic mentioned (like "Trump"): Use search URLs first, then relevant sections
+- General topic browsing: Use section/category URLs
+- Website-specific patterns: Follow each site's optimal URL structure
+- Unknown sites: Try both search and section approaches
+
+URL PRIORITIZATION:
+1. FIRST PRIORITY: Search URLs for specific topics (most likely to find relevant articles)
+2. SECOND PRIORITY: Relevant section URLs (broader coverage)
+3. THIRD PRIORITY: General category URLs (fallback)
 
 Return only URLs, one per line, no additional text or explanations:"""
 
     def _generate_dynamic_url_guidance(self, domain_hints: List[str], raw_text: str) -> str:
-        """Generate dynamic URL guidance based on specific target domains."""
+        """Generate dynamic URL guidance based on specific target domains and search keywords."""
         guidance_parts = []
+
+        # Extract keywords from query for search-specific URLs
+        import re
+        keywords = re.findall(r'\b\w+\b', raw_text.lower())
+        search_terms = [word for word in keywords if len(word) > 3 and word not in {'from', 'about', 'articles', 'news'}]
+        primary_keyword = search_terms[0] if search_terms else 'news'
 
         for domain in domain_hints:
             if 'nytimes.com' in domain:
-                guidance_parts.append("""
-NYT URL PATTERNS:
-- Politics: https://www.nytimes.com/section/politics
-- Business: https://www.nytimes.com/section/business
-- Technology: https://www.nytimes.com/section/technology
-- World: https://www.nytimes.com/section/world
-- US: https://www.nytimes.com/section/us
-Format: /section/[topic-name]""")
+                guidance_parts.append(f"""
+NYT URL PATTERNS (topic-specific for "{primary_keyword}"):
+- Search by topic: https://www.nytimes.com/search?query={primary_keyword}
+- Section with topic relevance: https://www.nytimes.com/section/politics (if politics-related)
+- Section with topic relevance: https://www.nytimes.com/section/us (if US-related)
+- Section with topic relevance: https://www.nytimes.com/section/world (if international)
+PREFER: Use search URL when looking for specific topics like "{primary_keyword}"
+Format: /search?query=[keyword] for specific topics, /section/[category] for general browsing""")
 
             elif 'bbc.com' in domain or 'bbc.co.uk' in domain:
-                guidance_parts.append("""
-BBC URL PATTERNS:
-- World: https://www.bbc.com/news/world
-- Politics: https://www.bbc.com/news/politics
-- Business: https://www.bbc.com/news/business
-- Technology: https://www.bbc.com/news/technology
-- Science: https://www.bbc.com/news/science-environment
-Format: /news/[topic-name]""")
+                guidance_parts.append(f"""
+BBC URL PATTERNS (topic-specific for "{primary_keyword}"):
+- Topic search: https://www.bbc.com/search?q={primary_keyword}
+- Politics section: https://www.bbc.com/news/politics (if politics-related)
+- World section: https://www.bbc.com/news/world (if international)
+- US & Canada: https://www.bbc.com/news/world-us-canada (if US-related)
+PREFER: Use search URL when looking for specific topics like "{primary_keyword}"
+Format: /search?q=[keyword] for specific topics, /news/[section] for browsing""")
 
             elif 'reuters.com' in domain:
-                guidance_parts.append("""
-REUTERS URL PATTERNS:
-- Technology: https://www.reuters.com/technology/
-- Business: https://www.reuters.com/business/
-- World: https://www.reuters.com/world/
-- Markets: https://www.reuters.com/markets/
-- Politics: https://www.reuters.com/world/us/
-Format: /[topic]/ or /world/[region]/
-NOTE: Reuters may have access restrictions (401 errors)""")
+                guidance_parts.append(f"""
+REUTERS URL PATTERNS (topic-specific for "{primary_keyword}"):
+- Search: https://www.reuters.com/site-search/?query={primary_keyword}
+- Politics: https://www.reuters.com/world/us/ (if politics/US-related)
+- Business: https://www.reuters.com/business/ (if business-related)
+- Technology: https://www.reuters.com/technology/ (if tech-related)
+PREFER: Use search URL when looking for specific topics like "{primary_keyword}"
+NOTE: Reuters may have access restrictions (401 errors) - if so, generate fallback URLs
+Format: /site-search/?query=[keyword] for topics, /[category]/ for sections""")
 
             elif 'cnn.com' in domain:
-                guidance_parts.append("""
-CNN URL PATTERNS:
-- Politics: https://www.cnn.com/politics
-- Business: https://www.cnn.com/business
-- World: https://www.cnn.com/world
-- Technology: https://www.cnn.com/business/tech
-- US: https://www.cnn.com/us
-Format: /[topic-name]""")
+                guidance_parts.append(f"""
+CNN URL PATTERNS (topic-specific for "{primary_keyword}"):
+- Search: https://www.cnn.com/search?q={primary_keyword}
+- Politics: https://www.cnn.com/politics (if politics-related)
+- US news: https://www.cnn.com/us (if US domestic)
+- World: https://www.cnn.com/world (if international)
+PREFER: Use search URL when looking for specific topics like "{primary_keyword}"
+Format: /search?q=[keyword] for specific topics, /[section] for browsing""")
 
             elif 'guardian.com' in domain or 'theguardian.com' in domain:
-                guidance_parts.append("""
-GUARDIAN URL PATTERNS:
-- World: https://www.theguardian.com/world
-- Politics: https://www.theguardian.com/politics
-- Business: https://www.theguardian.com/business
-- Technology: https://www.theguardian.com/technology
-- Environment: https://www.theguardian.com/environment
-Format: /[topic-name]""")
+                guidance_parts.append(f"""
+GUARDIAN URL PATTERNS (topic-specific for "{primary_keyword}"):
+- Search: https://www.theguardian.com/search?q={primary_keyword}
+- Politics: https://www.theguardian.com/politics (if politics-related)
+- US news: https://www.theguardian.com/us-news (if US-related)
+- World: https://www.theguardian.com/world (if international)
+PREFER: Use search URL when looking for specific topics like "{primary_keyword}"
+Format: /search?q=[keyword] for specific topics, /[section] for browsing""")
 
             else:
                 guidance_parts.append(f"""
-UNKNOWN DOMAIN ({domain}) PATTERNS:
-- Try: {domain}/news/[topic]
-- Try: {domain}/[topic]/
-- Try: {domain}/section/[topic]
-- Try: {domain}/category/[topic]
-Use common news site URL structures""")
+UNKNOWN DOMAIN ({domain}) PATTERNS (topic-specific for "{primary_keyword}"):
+- Try search: {domain}/search?q={primary_keyword}
+- Try: {domain}/search?query={primary_keyword}
+- Try section: {domain}/news/[relevant-section]
+- Try category: {domain}/[relevant-category]/
+PREFER: Search URLs for specific topics, section URLs for browsing
+Use both search and section approaches for unknown sites""")
 
         return "\n".join(guidance_parts)
 

@@ -249,12 +249,22 @@ class RawTextParser:
     def _suggest_method(self, text: str, urls: List[str]) -> FetchMethod:
         """Suggest fetch method based on text and URLs."""
         text_lower = text.lower()
-        
+
+        # Check for explicit static content indicators
+        if any(word in text_lower for word in
+               ['static', 'html', 'simple', 'basic']):
+            return FetchMethod.REQUESTS
+
         # Check for JavaScript/dynamic content indicators
-        if any(word in text_lower for word in 
+        if any(word in text_lower for word in
                ['javascript', 'dynamic', 'spa', 'react', 'vue', 'angular']):
             return FetchMethod.PLAYWRIGHT
-        
+
+        # Check for API endpoints first (prefer requests for APIs)
+        for url in urls:
+            if any(api_indicator in url.lower() for api_indicator in ['/api/', '.json', 'api.']):
+                return FetchMethod.REQUESTS
+
         # Check URL domains for sites that need JavaScript rendering
         for url in urls:
             try:
@@ -266,8 +276,9 @@ class RawTextParser:
             except Exception:
                 continue
 
-        # Default to Playwright for better content extraction
-        return FetchMethod.PLAYWRIGHT
+        # Default to REQUESTS for simple cases, PLAYWRIGHT for complex cases
+        # If no clear indicators, prefer REQUESTS for better performance
+        return FetchMethod.REQUESTS
     
     def _calculate_confidence(self, text: str, urls: List[str], 
                             structure: Optional[Dict[str, Any]]) -> float:

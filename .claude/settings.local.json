@@ -23,7 +23,11 @@
       "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about Trump\")",
       "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about technology\")",
       "Bash(pytest:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about technology from BBC\")",
+      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles about politics\")",
+      "Bash(python:*)",
+      "Bash(\"venv\\Scripts\\python.exe\" fetch_articles.py \"articles from cnn or bbc about trump\")"
     ],
     "deny": [],
     "ask": []
