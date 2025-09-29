@@ -140,9 +140,43 @@ class AIOrchestrator:
             None, self.orchestrate_fetch, raw_text
         )
 
+    def _detect_target_websites(self, raw_text: str) -> List[str]:
+        """
+        Detect target websites mentioned in user query.
+
+        Returns list of website domains, or default multi-site list if none specified.
+        """
+        text_lower = raw_text.lower()
+
+        # Website detection patterns
+        known_sites = {
+            'bbc': ['bbc.com', 'bbc.co.uk'],
+            'reuters': ['reuters.com'],
+            'nytimes': ['nytimes.com'],
+            'cnn': ['cnn.com'],
+            'guardian': ['theguardian.com', 'guardian.com'],
+            'wsj': ['wsj.com'],
+            'washingtonpost': ['washingtonpost.com'],
+            'apnews': ['apnews.com'],
+            'bloomberg': ['bloomberg.com'],
+            'ft': ['ft.com'],
+            'economist': ['economist.com']
+        }
+
+        detected_sites = []
+        for site_name, domains in known_sites.items():
+            if site_name in text_lower or any(domain in text_lower for domain in domains):
+                detected_sites.extend(domains)
+
+        # If no specific sites mentioned, use diverse multi-site approach
+        if not detected_sites:
+            return ['nytimes.com', 'bbc.com', 'reuters.com']  # Diverse defaults
+
+        return detected_sites
+
     def _discover_urls(self, raw_text: str) -> List[str]:
         """
-        Discover URLs from raw text using parser + AI.
+        Discover URLs from raw text using adaptive website detection + AI.
 
         Args:
             raw_text: User's description
@@ -150,7 +184,11 @@ class AIOrchestrator:
         Returns:
             List of URLs to fetch from
         """
-        self.logger.info("Step 1: Discovering URLs")
+        self.logger.info("Step 1: Discovering URLs with adaptive website detection")
+
+        # Detect target websites first
+        target_sites = self._detect_target_websites(raw_text)
+        self.logger.info(f"Detected target websites: {target_sites}")
 
         # First, try to extract URLs from text using parser
         parsed = self.parser.parse(raw_text)
@@ -160,12 +198,12 @@ class AIOrchestrator:
             self.logger.info(f"Found {len(urls)} URLs in text")
             return urls
 
-        # If no URLs found, use AI to generate them
+        # If no URLs found, use AI with website-aware prompting
         if self.ai_client:
-            self.logger.info("No URLs found, using AI to generate them")
-            ai_urls = self.ai_client.generate_urls_from_text(raw_text)
+            self.logger.info(f"No URLs found, using AI with adaptive generation for {len(target_sites)} websites")
+            ai_urls = self.ai_client.generate_urls_from_text(raw_text, domain_hints=target_sites)
             if ai_urls:
-                self.logger.info(f"AI generated {len(ai_urls)} URLs")
+                self.logger.info(f"AI generated {len(ai_urls)} adaptive URLs: {ai_urls}")
                 return ai_urls
 
         # Fallback to hardcoded mapping (existing behavior)
@@ -229,10 +267,14 @@ class AIOrchestrator:
 
         if self.ai_client and sample_data:
             try:
+                # Add website context to structure generation
+                target_sites = self._detect_target_websites(raw_text)
+                context = f"Target websites: {target_sites}. Query: {raw_text}. Adapt structure to common news article patterns."
+
                 structure = self.ai_client.generate_structure_from_sample(
-                    sample_data, context=raw_text
+                    sample_data, context=context
                 )
-                self.logger.info("AI generated structure definition")
+                self.logger.info(f"AI generated adaptive structure for {len(target_sites)} websites")
                 return structure
             except Exception as e:
                 self.logger.warning(f"AI structure generation failed: {str(e)}")
@@ -285,7 +327,11 @@ class AIOrchestrator:
             return self._create_generic_implementation()
 
         try:
-            # Generate Python code using AI
+            # Enhance spec with website context for adaptive generation
+            target_sites = self._detect_target_websites(spec.raw_text)
+            self.logger.info(f"Generating adaptive implementation for websites: {target_sites}")
+
+            # Generate Python code using AI with website-specific adaptations
             code = self.ai_client.generate_datafetch_implementation(
                 spec, sample_data, "src.core.datafetch.DataFetch"
             )
@@ -293,11 +339,11 @@ class AIOrchestrator:
             # Compile and load the generated code
             implementation_class = self._compile_and_load_code(code, spec)
 
-            self.logger.info("AI implementation generated and compiled successfully")
+            self.logger.info(f"Adaptive AI implementation generated and compiled successfully for {len(target_sites)} websites")
             return implementation_class
 
         except Exception as e:
-            self.logger.error(f"Implementation generation failed: {str(e)}")
+            self.logger.error(f"Adaptive implementation generation failed: {str(e)}")
             # Fallback to generic implementation
             return self._create_generic_implementation()
 

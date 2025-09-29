@@ -283,34 +283,44 @@ Return only the JSON schema, no additional commentary:"""
         if domain_hints:
             domain_section = f"\nPreferred domains: {', '.join(domain_hints)}"
 
-        return f"""You are a web data specialist. Generate relevant, topic-specific URLs based on the user's data requirements.
+        return f"""You are an adaptive web data specialist. Generate topic-specific URLs for ANY news website mentioned in the query, or multiple major sites if none specified.
 
 User Requirements: {raw_text}{domain_section}
 
-Instructions:
-1. Generate exactly 3 relevant URLs that are SPECIFIC to the topic mentioned
-2. Analyze the query for geographic regions, topics, or subjects
-3. For different countries/regions, use different geographic sections:
-   - Germany/Europe: world/europe, business (for German companies)
-   - Russia/Eastern Europe: world/europe, world/asia (Russia spans both)
-   - China/Asia: world/asia, business (Chinese economy)
-   - Middle East: world/middleeast
-   - US topics: us/politics, us (domestic)
-   - Technology: technology, business
-   - Climate: climate, science
-4. Use section URLs like /section/[topic] (verified working sections only)
-5. Prioritize geographic specificity over generic world section
-6. Use HTTPS URLs only
-7. Return only valid NYT section URLs that actually exist
+ADAPTIVE WEBSITE DETECTION:
+1. If query mentions specific sites (BBC, Reuters, CNN, Guardian, etc.): Focus on that site
+2. If no site mentioned: Generate URLs from 3 different major news sites for diversity
+3. Learn and adapt to ANY website's URL structure by analyzing the domain
 
-Examples of TOPIC-SPECIFIC URL generation (3 URLs each):
-Query "articles about Germany" → https://www.nytimes.com/section/world/europe, https://www.nytimes.com/section/business, https://www.nytimes.com/section/world
-Query "articles about Russia" → https://www.nytimes.com/section/world/europe, https://www.nytimes.com/section/world/asia, https://www.nytimes.com/section/opinion
-Query "articles about China" → https://www.nytimes.com/section/world/asia, https://www.nytimes.com/section/business, https://www.nytimes.com/section/technology
-Query "articles about technology" → https://www.nytimes.com/section/technology, https://www.nytimes.com/section/business, https://www.nytimes.com/section/science
-Query "articles about climate" → https://www.nytimes.com/section/climate, https://www.nytimes.com/section/science, https://www.nytimes.com/section/opinion
+WEBSITE PATTERN ANALYSIS:
+- NYT: /section/[topic] format (climate, technology, world/europe, etc.)
+- BBC: /news/[topic] format (science-environment, technology, world, etc.)
+- Reuters: /[topic]/ or /world/[region]/ format
+- CNN: /[year]/[month]/[day]/[section]/ or topic-based sections
+- Guardian: /[section]/[topic] format (world, business, technology, etc.)
+- Unknown sites: Analyze domain and infer likely URL patterns
 
-IMPORTANT: Make URLs specific to the topic/geography mentioned, not generic world sections.
+ADAPTIVE URL GENERATION:
+1. Detect target website(s) from query
+2. For known sites: Use established patterns
+3. For unknown sites: Infer patterns based on common news site structures
+4. Generate 3 relevant URLs per target site
+
+Examples of ADAPTIVE generation:
+Query "articles about climate from BBC" → https://www.bbc.com/news/science-environment, https://www.bbc.com/news/climate, https://www.bbc.com/news/world
+Query "technology news from Reuters" → https://www.reuters.com/technology/, https://www.reuters.com/business/, https://www.reuters.com/world/
+Query "articles about climate" (no site) →
+  https://www.nytimes.com/section/climate
+  https://www.bbc.com/news/science-environment
+  https://www.reuters.com/business/environment/
+
+UNKNOWN WEBSITE ADAPTATION:
+For unfamiliar domains, try these common patterns:
+- /news/[topic]
+- /[topic]/
+- /section/[topic]
+- /category/[topic]
+- /[year]/[month]/[day]/[topic]/
 
 Return URLs one per line, no additional text:"""
 
@@ -331,7 +341,7 @@ Sample Data Reference:
 {sample_data}
 ```"""
 
-        return f"""You are a Python code generator specializing in web scraping and data fetching. Generate a complete DataFetch implementation class.
+        return f"""You are an adaptive Python code generator that creates DataFetch implementations for ANY news website. Analyze the provided URLs and adapt to their specific structure.
 
 Requirements: {raw_text}
 URLs: {', '.join(urls)}
@@ -339,18 +349,53 @@ Expected Format: {expected_format.value}
 Fetch Method: {method.value}
 Base Class: {base_class_path}{sample_section}
 
-Instructions:
-1. Create a class that inherits from DataFetch
-2. Implement all required abstract methods
-3. Use appropriate HTTP/browser client based on method
-4. Include proper error handling and validation
-5. Follow the existing pattern from the base class
-6. Add specific parsing logic for the expected data format
-7. Include comprehensive docstrings
-8. Handle news website patterns if applicable
-9. No imports beyond standard library and project modules
+ADAPTIVE IMPLEMENTATION STRATEGY:
+1. ANALYZE URLs to determine website domain and structure
+2. DETECT common news site patterns (NYT, BBC, Reuters, CNN, Guardian, or unknown)
+3. ADAPT parsing strategy based on the specific website
+4. IMPLEMENT site-specific optimizations
 
-Generate only the class implementation code:
+WEBSITE-SPECIFIC ADAPTATIONS:
+- NYT: Look for 'data-testid="headline"', 'section[name="articleBody"]'
+- BBC: Look for 'h1', '[data-component="text-block"]'
+- Reuters: Look for 'h1', '[data-module="ArticleBody"]'
+- CNN: Look for 'h1', '.zn-body__paragraph'
+- Guardian: Look for '[data-gu-name="headline"]', '.content__article-body'
+- Unknown sites: Use general selectors and adaptive discovery
+
+ADAPTIVE PARSING LOGIC:
+```python
+def _detect_website_type(self, url):
+    if 'nytimes.com' in url: return 'nyt'
+    elif 'bbc.com' in url or 'bbc.co.uk' in url: return 'bbc'
+    elif 'reuters.com' in url: return 'reuters'
+    elif 'cnn.com' in url: return 'cnn'
+    elif 'guardian.com' in url or 'theguardian.com' in url: return 'guardian'
+    else: return 'unknown'
+
+def _get_adaptive_selectors(self, website_type):
+    selectors = {{
+        'nyt': {{'title': 'h1[data-testid="headline"]', 'content': 'section[name="articleBody"]'}},
+        'bbc': {{'title': 'h1', 'content': '[data-component="text-block"]'}},
+        'reuters': {{'title': 'h1', 'content': '[data-module="ArticleBody"]'}},
+        'cnn': {{'title': 'h1', 'content': '.zn-body__paragraph'}},
+        'guardian': {{'title': '[data-gu-name="headline"]', 'content': '.content__article-body'}},
+        'unknown': {{'title': 'h1, .headline, .title, [class*="title"]',
+                     'content': '.content, .article-body, [class*="content"], [class*="body"]'}}
+    }}
+    return selectors.get(website_type, selectors['unknown'])
+```
+
+REQUIREMENTS:
+1. Inherit from DataFetch and implement: fetch(), afetch(), validate_data(), extract_structure()
+2. Use HTTPClient or BrowserClient based on method parameter
+3. Implement adaptive content extraction based on detected website
+4. Include robust error handling for unknown sites
+5. Extract articles with title, summary, url, and publish_date when possible
+6. Handle both single articles and article lists
+7. Add rate limiting appropriate for the detected website
+
+Generate a complete, adaptive implementation:
 
 ```python"""
 

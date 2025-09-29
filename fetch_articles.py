@@ -18,6 +18,7 @@ from src.spec.parser import RawTextParser
 from src.collectors.http_client import HTTPClient
 from src.collectors.browser_client import BrowserClient
 from src.core.datafetch import FetchSpec, FetchMethod
+from src.core.ai_orchestrator import AIOrchestrator
 import re
 
 
@@ -88,7 +89,7 @@ def extract_keywords_from_query(query):
 def fetch_articles(query):
     """
     Fetch articles using raw text query.
-    Uses AI for URL and structure discovery when not explicitly provided.
+    Uses AI orchestrator for dynamic implementation generation, with fallback to static collectors.
 
     Args:
         query (str): Raw text description like "articles about war in the NYT"
@@ -99,10 +100,110 @@ def fetch_articles(query):
     print(f"Processing query: '{query}'")
     print("-" * 50)
 
+    # Try AI orchestrator first (dynamic approach)
+    try:
+        print("AI: Attempting dynamic implementation generation...")
+        orchestrator = AIOrchestrator()
+        result = orchestrator.orchestrate_fetch(query)
+
+        if result and not result.error:
+            print("SUCCESS: AI orchestrator completed")
+            print(f"  Status: Success")
+            print(f"  Items found: {len(result.data) if isinstance(result.data, (list, tuple)) else 1}")
+            print(f"  Fetch time: {result.execution_time:.2f}s")
+            print()
+
+            # Process results with existing ranking system
+            return _process_ai_orchestrator_results(query, result)
+        else:
+            print(f"AI: Orchestrator returned error: {result.error if result else 'No result'}")
+            raise Exception("AI orchestrator failed")
+
+    except Exception as e:
+        print(f"AI: Dynamic approach failed: {e}")
+        print("AI: Falling back to static collector approach...")
+        print()
+
+        return _fetch_articles_fallback(query)
+
+
+def _process_ai_orchestrator_results(query, result):
+    """Process results from AI orchestrator using existing ranking system."""
+    query_keywords = extract_keywords_from_query(query)
+
+    if isinstance(result.data, (list, tuple)):
+        # Apply existing ranking logic
+        scored_articles = []
+        for article in result.data:
+            if isinstance(article, dict):
+                score = score_article_relevance(article, query_keywords)
+                scored_articles.append((score, article))
+            else:
+                scored_articles.append((0.0, article))
+
+        # Sort by score (highest first)
+        scored_articles.sort(key=lambda x: x[0], reverse=True)
+
+        # Apply existing filtering logic (≤ 1.0 scores outside top 3)
+        filtered_articles = []
+        for i, (score, article) in enumerate(scored_articles):
+            if score > 0:
+                if score <= 1.0 and i >= 3:
+                    continue  # Skip low scores outside top 3
+                filtered_articles.append((score, article))
+
+        articles_to_show = filtered_articles[:10] if filtered_articles else scored_articles[:10]
+
+        # Display results
+        print("ARTICLES: Found articles (ranked by relevance):")
+        print("=" * 50)
+        print(f"Ranking keywords: {', '.join(query_keywords)}")
+        print()
+        print(f"Showing top {len(articles_to_show)} articles ({len(filtered_articles)} highly relevant, {len(scored_articles)} total)")
+        print()
+
+        for i, (score, article) in enumerate(articles_to_show, 1):
+            if isinstance(article, dict):
+                print(f"{i}. {article.get('title', 'No title')} [Score: {score:.1f}]")
+                if article.get('summary'):
+                    print(f"   Summary: {article['summary'][:100]}...")
+                if article.get('url'):
+                    print(f"   URL: {article['url']}")
+            else:
+                print(f"{i}. {str(article)[:100]}... [Score: {score:.1f}]")
+            print()
+
+        return {
+            'query': query,
+            'total_articles': len(result.data),
+            'articles': result.data,
+            'fetch_time': result.execution_time,
+            'status': 'Success'
+        }
+    else:
+        # Single result
+        print(f"Single result: {str(result.data)[:200]}...")
+        return {
+            'query': query,
+            'total_articles': 1,
+            'articles': result.data,
+            'fetch_time': result.execution_time,
+            'status': 'Success'
+        }
+
+
+def _fetch_articles_fallback(query):
+    """Fallback to original static collector approach."""
     # Step 1: Parse raw text using RawTextParser (CLAUDE.md strategy)
     parser = RawTextParser()
     spec = parser.parse(query)
 
+    # Original static collector logic preserved as fallback
+    return _execute_static_collector_approach(query, spec)
+
+
+def _execute_static_collector_approach(query, spec):
+    """Execute the original static collector approach with existing logic."""
     print("SUCCESS: Parsed specification:")
     print(f"  URL: {spec.extracted_urls[0] if spec.extracted_urls else 'No URL extracted'}")
     print(f"  Format: {spec.suggested_format}")
